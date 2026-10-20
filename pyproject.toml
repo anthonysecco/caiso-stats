@@ -1,6 +1,6 @@
 [project]
 name = "caiso-stats"
-version = "0.2.0"
+version = "0.2.1"
 description = "Home Assistant integration for California ISO grid conditions and load-shifting signals"
 requires-python = ">=3.13"
 license = "MIT"

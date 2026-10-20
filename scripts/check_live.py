@@ -52,7 +52,8 @@ async def main() -> int:
     peak = f"{data.peak_mw:.0f} MW at {data.peak_time:%H:%M}" if data.peak_time else None
     print(
         f"{stats.updated:%Y-%m-%d %H:%M} PT status={data.grid_status} "
-        f"demand={stats.num('CurrentSystemDemand'):.0f} MW reserve_ratio={data.reserve_ratio}% co2={data.co2_intensity} g/kWh net_demand_peak={peak} "
+        f"demand={stats.num('CurrentSystemDemand'):.0f} MW reserve_ratio={data.reserve_ratio}% "
+        f"co2={data.co2_intensity} g/kWh net_demand_peak={peak} "
         f"low_window={window} recommendation={data.recommendation}"
     )
     for p in problems:

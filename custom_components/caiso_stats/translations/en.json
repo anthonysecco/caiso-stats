@@ -28,7 +28,7 @@
           "window_hours": "Low demand window length"
         },
         "data_description": {
-          "scan_interval": "How often to fetch both feeds (5-60 minutes). CAISO refreshes them every 5 minutes.",
+          "scan_interval": "How often to poll CAISO (5-60 minutes). Live stats are fetched every poll; the net demand forecast about once an hour.",
           "clean_co2_threshold": "Clean energy now is on when grid CO2 intensity is at or below this.",
           "peak_percent": "Peak demand period is on when net demand reaches this share of today's forecast net demand peak.",
           "reserve_ratio_threshold": "Grid stress is on when operating reserve falls below this share of the required reserve (or CAISO reports any non-normal grid status).",

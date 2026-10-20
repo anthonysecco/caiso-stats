@@ -16,6 +16,9 @@ OUTLOOK_URL = "https://www.caiso.com/todays-outlook"
 ATTRIBUTION = "Data from California ISO Today's Outlook (unofficial, not affiliated with CAISO)"
 CAISO_TZ = ZoneInfo("America/Los_Angeles")
 REQUEST_TIMEOUT = 30  # seconds
+# CAISO revises the next hour of netdemand.csv's net demand forecast around :28 past each
+# hour (Pacific), so the file is refetched on the first poll after this minute.
+NET_DEMAND_REFRESH_MINUTE = 35
 
 # Options
 CONF_SCAN_INTERVAL = "scan_interval"  # minutes

@@ -221,8 +221,13 @@ class CaisoClient:
         """Raw netdemand.csv."""
         return await self._get(NET_DEMAND_URL)
 
-    async def fetch(self) -> tuple[str, str | CaisoError]:
-        """Both feeds in parallel. stats.txt errors raise; a net demand error is returned."""
+    async def fetch(self, net_demand: bool = True) -> tuple[str, str | CaisoError | None]:
+        """stats.txt, plus netdemand.csv in parallel unless `net_demand` is False (then None).
+
+        stats.txt errors raise; a net demand error is returned.
+        """
+        if not net_demand:
+            return await self.stats_text(), None
         stats, net = await asyncio.gather(self.stats_text(), self.net_demand_text(), return_exceptions=True)
         if isinstance(stats, BaseException):
             raise stats if isinstance(stats, CaisoError) else CaisoError(str(stats))

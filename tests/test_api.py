@@ -15,7 +15,7 @@ from custom_components.caiso_stats.api import (
     worst_status,
 )
 from custom_components.caiso_stats.const import CAISO_TZ
-from custom_components.caiso_stats.coordinator import derive, lowest_window
+from custom_components.caiso_stats.coordinator import derive, lowest_window, net_demand_due
 
 SLOT = datetime(2026, 10, 19, 18, 0, tzinfo=CAISO_TZ)
 
@@ -133,3 +133,27 @@ def test_lowest_window_short_remainder(net_demand_text: str) -> None:
     window = lowest_window(day, datetime(2026, 10, 19, 23, 0, tzinfo=CAISO_TZ), 3)
     assert window is not None
     assert window.end == datetime(2026, 10, 20, 0, 0, tzinfo=CAISO_TZ)
+
+
+@pytest.mark.parametrize(
+    ("fetched", "now", "due"),
+    [
+        (None, (18, 0), True),  # startup or last fetch failed
+        ((18, 0), (18, 20), False),  # this hour's forecast revision not out yet
+        ((18, 0), (18, 34), False),
+        ((18, 0), (18, 35), True),  # revision landed around :28
+        ((18, 36), (19, 20), False),
+        ((18, 36), (19, 40), True),
+    ],
+)
+def test_net_demand_due(fetched: tuple[int, int] | None, now: tuple[int, int], due: bool) -> None:
+    def at(hm: tuple[int, int]) -> datetime:
+        return datetime(2026, 10, 19, *hm, tzinfo=CAISO_TZ)
+
+    assert net_demand_due(at(fetched) if fetched else None, at(now)) is due
+
+
+def test_net_demand_due_new_day() -> None:
+    fetched = datetime(2026, 10, 19, 23, 50, tzinfo=CAISO_TZ)
+    assert net_demand_due(fetched, datetime(2026, 10, 19, 23, 59, tzinfo=CAISO_TZ)) is False
+    assert net_demand_due(fetched, datetime(2026, 10, 20, 0, 5, tzinfo=CAISO_TZ)) is True

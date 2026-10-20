@@ -53,8 +53,8 @@ Copy `custom_components/caiso_stats` from the [latest release](https://github.co
 **Settings → Devices & services → CAISO Stats → Configure.** Saving reloads the integration.
 
 | Option | Default | What it does |
-|---|---|---|
-| Update interval | 15 min | How often both feeds are fetched (5–60 min). CAISO refreshes them every 5 min. Each update makes 2 small requests with a 30 s timeout. |
+|---|---|---|---|
+| Update interval | 15 min | How often CAISO is polled (5–60 min). Each poll fetches the live stats; the net demand forecast is refetched about once an hour (see [Data and update frequency](#data-and-update-frequency)). |
 | Clean energy CO2 threshold | 200 g/kWh | **Clean energy now** turns on at or below this grid CO2 intensity. |
 | Peak period threshold | 90 % | **Peak demand period** turns on when net demand reaches this share of today's forecast net demand peak. |
 | Grid stress reserve threshold | 150 % | **Grid stress** turns on when operating reserve falls below this share of the required reserve, or whenever CAISO reports a non-normal grid status. |
@@ -66,9 +66,11 @@ Copy `custom_components/caiso_stats` from the [latest release](https://github.co
 
 Entity IDs below assume the default device name **CAISO**. All power values are in MW for the whole CAISO balancing area.
 
+A fresh install enables 11 entities: the load-shifting signals plus the context that explains them (grid status, net demand, clean energy share, CO2 intensity, the net demand peak time and the low demand window). Everything marked *Off by default* is created disabled. To turn one on, open **Settings → Devices & services → CAISO Stats → entities**, select it and choose **Enable**. Disabled entities record no history, which keeps the database small.
+
 ### Load-shifting signals
 | Entity | Type | Meaning |
-|---|---|---|
+|---|---|---|---|
 | `sensor.caiso_load_shift_recommendation` | enum: `avoid` / `normal` / `use_now` | One signal for most automations (see [logic](#load-shifting-signals)). Attributes give each input. |
 | `binary_sensor.caiso_grid_stress` | problem | Non-normal grid status (Flex Alert, EEA…) or reserves below threshold. |
 | `binary_sensor.caiso_peak_demand_period` | on/off | Net demand near today's forecast peak. Usually the late-afternoon and evening ramp. |
@@ -77,42 +79,42 @@ Entity IDs below assume the default device name **CAISO**. All power values are 
 
 ### Grid
 | Entity | Unit | Notes |
-|---|---|---|
+|---|---|---|---|
 | `sensor.caiso_grid_status` | enum | `normal`, `rmo`, `flex_alert`, `eea_watch`, `transmission_emergency`, `eea_1`, `eea_2`, `eea_3`, `other`. The most severe notice wins. `notices` holds CAISO's raw text. |
-| `sensor.caiso_demand` | MW | Current system demand. |
+| `sensor.caiso_demand` | MW | Current system demand. *Off by default.* |
 | `sensor.caiso_net_demand` | MW | Demand minus solar and wind: what dispatchable plants, batteries and imports must cover. |
-| `sensor.caiso_today_s_peak_demand` | MW | Highest demand so far today (`peak_time` attribute). |
-| `sensor.caiso_forecast_peak_demand_today` | MW | CAISO's forecast peak for today (`peak_time` attribute). |
-| `sensor.caiso_forecast_peak_demand_tomorrow` | MW | Forecast peak for tomorrow. |
-| `sensor.caiso_operating_reserve` | MW | Current operating reserve. |
-| `sensor.caiso_required_reserve` | MW | Reserve CAISO must hold. |
-| `sensor.caiso_reserve_ratio` | % | Operating reserve ÷ required reserve. Below 100 % means CAISO is short. |
-| `sensor.caiso_available_capacity`, `sensor.caiso_unloaded_capacity_10_min` / `_1_h` / `_4_h` | MW | Capacity headroom. *Disabled by default.* |
+| `sensor.caiso_today_s_peak_demand` | MW | Highest demand so far today (`peak_time` attribute). *Off by default.* |
+| `sensor.caiso_forecast_peak_demand_today` | MW | CAISO's forecast peak for today (`peak_time` attribute). *Off by default.* |
+| `sensor.caiso_forecast_peak_demand_tomorrow` | MW | Forecast peak for tomorrow. *Off by default.* |
+| `sensor.caiso_operating_reserve` | MW | Current operating reserve. *Off by default.* |
+| `sensor.caiso_required_reserve` | MW | Reserve CAISO must hold. *Off by default.* |
+| `sensor.caiso_reserve_ratio` | % | Operating reserve ÷ required reserve. Below 100 % means CAISO is short. *Off by default.* |
+| `sensor.caiso_available_capacity`, `sensor.caiso_unloaded_capacity_10_min` / `_1_h` / `_4_h` | MW | Capacity headroom. *Off by default.* |
 
 ### Supply mix and emissions
 | Entity | Unit | Notes |
-|---|---|---|
-| `sensor.caiso_solar`, `_wind`, `_geothermal`, `_biomass`, `_biogas`, `_small_hydro`, `_large_hydro`, `_nuclear`, `_natural_gas`, `_coal`, `_imports` | MW | Current output by source. |
-| `sensor.caiso_batteries` | MW | **Negative = charging**, positive = discharging. `mode`, `standalone_mw` and `hybrid_mw` attributes. |
-| `sensor.caiso_other_generation`, `sensor.caiso_hybrids` | MW | *Disabled by default.* |
-| `sensor.caiso_renewables` | % | CAISO's renewables share of demand. |
+|---|---|---|---|
+| `sensor.caiso_solar`, `_wind`, `_geothermal`, `_biomass`, `_biogas`, `_small_hydro`, `_large_hydro`, `_nuclear`, `_natural_gas`, `_coal`, `_imports` | MW | Current output by source. *Off by default.* |
+| `sensor.caiso_batteries` | MW | **Negative = charging**, positive = discharging. `mode`, `standalone_mw` and `hybrid_mw` attributes. *Off by default.* |
+| `sensor.caiso_other_generation`, `sensor.caiso_hybrids` | MW | *Off by default.* |
+| `sensor.caiso_renewables` | % | CAISO's renewables share of demand. *Off by default.* |
 | `sensor.caiso_clean_energy` | % | Renewables + large hydro + nuclear, as a share of demand. |
-| `sensor.caiso_solar_and_wind_share` | % | Solar + wind share of demand. *Disabled by default.* |
-| `sensor.caiso_co2_emissions` | t/h | Metric tons of CO2 per hour from CAISO-area generation and imports. |
+| `sensor.caiso_solar_and_wind_share` | % | Solar + wind share of demand. *Off by default.* |
+| `sensor.caiso_co2_emissions` | t/h | Metric tons of CO2 per hour from CAISO-area generation and imports. *Off by default.* |
 | `sensor.caiso_co2_intensity` | g/kWh | Average CO2 per kWh served right now. |
 
 ### Net demand forecast (rest of today)
 | Entity | Unit | Notes |
-|---|---|---|
-| `sensor.caiso_net_demand_forecast` | MW | CAISO's net demand forecast for the current interval. The `forecast` attribute holds hourly forecast and actuals for charts; it isn't saved to the database. |
-| `sensor.caiso_net_demand_peak_forecast` | MW | Today's forecast net demand peak. |
+|---|---|---|---|
+| `sensor.caiso_net_demand_forecast` | MW | CAISO's net demand forecast for the current interval. The `forecast` attribute holds hourly forecast and actuals for charts; it isn't saved to the database. *Off by default.* |
+| `sensor.caiso_net_demand_peak_forecast` | MW | Today's forecast net demand peak. *Off by default.* |
 | `sensor.caiso_net_demand_peak_time` | timestamp | When that peak is expected. |
 | `sensor.caiso_low_demand_window_start` | timestamp | Start of the lowest-average net demand window (default 3 h) in the rest of today. `end`, `average_mw` and `hours` attributes. |
 
 ### Diagnostic
 | Entity | Notes |
 |---|---|
-| `sensor.caiso_data_time` | Time of CAISO's snapshot. |
+| `sensor.caiso_data_time` | Time of CAISO's snapshot. *Off by default.* |
 
 ## Load-shifting signals
 
@@ -121,7 +123,7 @@ Entity IDs below assume the default device name **CAISO**. All power values are 
 `sensor.caiso_load_shift_recommendation` combines the four binary signals:
 
 | State | When | Suggested use |
-|---|---|---|
+|---|---|---|---|
 | `avoid` | **Grid stress** *or* **Peak demand period** | Pause flexible loads; pre-cool or pre-heat beforehand. |
 | `use_now` | Not `avoid`, and **Solar surplus** *or* **Clean energy now** | Start EV charging, water heater boost, pool pump, laundry. |
 | `normal` | Anything else | No strong signal either way. |
@@ -148,19 +150,20 @@ automation:
           title: "California grid stressed"
           message: >
             {{ states('sensor.caiso_grid_status') | replace('_', ' ') | title }},
-            reserve ratio {{ states('sensor.caiso_reserve_ratio') }} %.
+            reserve ratio {{ state_attr('binary_sensor.caiso_grid_stress', 'reserve_ratio') | float(0) | round | int }} %.
             Please hold off on big loads until it clears.
 ```
 
 ## Data and update frequency
 
-| Feed | URL | Used for |
-|---|---|---|
-| Stats snapshot | `https://wwwmobile.caiso.com/outlook/SP/stats.txt` | Status, demand, reserves, supply mix, CO2 |
-| Net demand curve | `https://www.caiso.com/outlook/current/netdemand.csv` | Today's net demand forecast, peak and low window |
+| Feed | URL | Used for | Fetched |
+|---|---|---|---|
+| Stats snapshot | `https://wwwmobile.caiso.com/outlook/SP/stats.txt` | Status, demand, reserves, supply mix, CO2 | Every poll |
+| Net demand curve | `https://www.caiso.com/outlook/current/netdemand.csv` | Today's net demand forecast, peak and low window | About once an hour |
 
-- CAISO refreshes both every 5 minutes. This integration polls every **15 minutes** by default: 2 requests, in parallel, each with a 30 s timeout. That's frequent enough for load shifting and gentle on a free public service. You can lower it to 5 minutes in Options.
-- If the forecast file fails, the live sensors keep working. Only the forecast entities go unavailable, and **Peak demand period** falls back to CAISO's demand-peak forecast.
+- CAISO refreshes both files every 5 minutes. This integration polls every **15 minutes** by default, with a 30 s timeout per request. That's frequent enough for load shifting and gentle on a free public service. You can lower it to 5 minutes in Options.
+- The net demand forecast itself only changes about once an hour: around :28 past each hour (Pacific), CAISO revises the coming hour. So the forecast file is fetched on the first poll after :35, on a new day, at startup, and again on the next poll after any failure. At the default interval that's about 24 forecast requests a day instead of 96. Between fetches, the low demand window and the current forecast value are recomputed from the copy already downloaded; the actuals in the `forecast` chart attribute can lag by up to an hour.
+- If the forecast file fails, the live sensors keep working. The last forecast fetched today stays in use until the next fetch succeeds. With no forecast yet today, the forecast entities go unavailable and **Peak demand period** falls back to CAISO's demand-peak forecast.
 - **Coverage:** the CAISO balancing area covers most of California, including PG&E, SCE and SDG&E territory and CCAs like SJCE and PCE. LADWP, SMUD, IID and some other municipal utilities run their own balancing areas.
 - CO2 figures are CAISO's own estimates for generation serving CAISO load, including imports.
 

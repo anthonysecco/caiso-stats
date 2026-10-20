@@ -27,7 +27,7 @@ actions:
         {{ 'California grid back to normal' if trigger.to_state.state == 'normal'
            else 'California grid: ' ~ state_translated('sensor.caiso_grid_status') }}
       message: >-
-        Reserve ratio {{ states('sensor.caiso_reserve_ratio') }} %,
+        Reserve ratio {{ state_attr('binary_sensor.caiso_grid_stress', 'reserve_ratio') | float(0) | round | int }} %,
         net demand {{ states('sensor.caiso_net_demand') | int(0) }} MW.
         {% if trigger.to_state.state != 'normal' %}Please minimise use, especially 4–9 pm.{% endif %}
 mode: queued
@@ -189,7 +189,7 @@ cards:
       - type: tile
         entity: sensor.caiso_grid_status
       - type: tile
-        entity: sensor.caiso_reserve_ratio
+        entity: sensor.caiso_clean_energy
       - type: tile
         entity: sensor.caiso_net_demand
       - type: tile
@@ -207,10 +207,10 @@ cards:
     hours_to_show: 24
     entities:
       - entity: sensor.caiso_net_demand
-      - entity: sensor.caiso_demand
+      - entity: sensor.caiso_co2_intensity
 ```
 
-Net demand forecast vs. actual, with [ApexCharts Card](https://github.com/RomRider/apexcharts-card) (also from HACS):
+Net demand forecast vs. actual, with [ApexCharts Card](https://github.com/RomRider/apexcharts-card) (also from HACS). Enable `sensor.caiso_net_demand_forecast` first; it's off by default.
 ```yaml
 type: custom:apexcharts-card
 header:
@@ -242,11 +242,11 @@ Minutes until the forecast peak:
 
 Is the grid charging its batteries?
 ```jinja
-{{ states('sensor.caiso_batteries') | float(0) < 0 }}
+{{ state_attr('binary_sensor.caiso_solar_surplus', 'batteries_mw') | float(0) < 0 }}
 ```
 
-Fossil share of demand:
+Fossil share of demand (enable the natural gas, coal and demand sensors first):
 ```jinja
 {{ ((states('sensor.caiso_natural_gas') | float(0) + states('sensor.caiso_coal') | float(0))
-    / states('sensor.caiso_demand') | float(1) * 100) | round(1) }}
+    / states('sensor.caiso_demand') | float(1) * 100) | round | int }}
 ```

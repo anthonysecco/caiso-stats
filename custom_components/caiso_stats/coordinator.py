@@ -14,6 +14,7 @@ from homeassistant.util import dt as dt_util
 
 from .api import CaisoClient, CaisoError, NetDemandDay, Stats, parse_net_demand, parse_stats, worst_status
 from .const import (
+    CAISO_TZ,
     CONF_CLEAN_CO2,
     CONF_PEAK_PERCENT,
     CONF_RESERVE_RATIO,
@@ -24,6 +25,7 @@ from .const import (
     DEFAULT_OPTIONS,
     DOMAIN,
     LOGGER,
+    NET_DEMAND_REFRESH_MINUTE,
     scan_interval,
 )
 
@@ -90,6 +92,24 @@ def lowest_window(day: NetDemandDay, start: datetime, hours: float) -> Window | 
             best_i, best_avg = i, avg
     chunk = pts[best_i : best_i + size]
     return Window(start=chunk[0].time, end=chunk[-1].time + step, average_mw=round(best_avg))
+
+
+def net_demand_due(fetched: datetime | None, now: datetime) -> bool:
+    """Whether netdemand.csv needs fetching again.
+
+    `fetched` is the last fetch that returned today's curve (None at startup, after a failure
+    or while CAISO still serves yesterday's file). Otherwise refetch on a new Pacific day and
+    once an hour, after CAISO revises the next hour's forecast.
+    """
+    if fetched is None:
+        return True
+    now, fetched = now.astimezone(CAISO_TZ), fetched.astimezone(CAISO_TZ)
+    if fetched.date() != now.date():
+        return True
+    refresh = now.replace(minute=NET_DEMAND_REFRESH_MINUTE, second=0, microsecond=0)
+    if refresh > now:
+        refresh -= timedelta(hours=1)
+    return fetched < refresh
 
 
 def derive(stats: Stats, net_day: NetDemandDay | None, options: dict[str, Any], now: datetime) -> CaisoData:
@@ -164,7 +184,7 @@ def derive(stats: Stats, net_day: NetDemandDay | None, options: dict[str, Any], 
 
 
 class CaisoCoordinator(DataUpdateCoordinator[CaisoData]):
-    """Fetches stats.txt and netdemand.csv together on one schedule."""
+    """Fetches stats.txt every poll and netdemand.csv about once an hour."""
 
     config_entry: CaisoConfigEntry
 
@@ -180,29 +200,38 @@ class CaisoCoordinator(DataUpdateCoordinator[CaisoData]):
         self.client = CaisoClient(async_get_clientsession(hass))
         self.raw_stats: str | None = None
         self.raw_net_demand: str | None = None
+        self._net_day: NetDemandDay | None = None
+        self._net_fetched: datetime | None = None
 
     async def _async_update_data(self) -> CaisoData:
+        now = dt_util.now()
         try:
-            stats_text, net_text = await self.client.fetch()
+            stats_text, net_text = await self.client.fetch(net_demand=net_demand_due(self._net_fetched, now))
             stats = parse_stats(stats_text)
         except CaisoError as err:
             raise UpdateFailed(str(err)) from err
         self.raw_stats = stats_text
 
-        now = dt_util.now()
-        net_day: NetDemandDay | None = None
+        reference = stats.updated or now
+        today = reference.astimezone(CAISO_TZ).date()
         net_error: str | None = None
         if isinstance(net_text, CaisoError):
             net_error = str(net_text)
-        else:
+        elif net_text is not None:
             self.raw_net_demand = net_text
             try:
-                net_day = parse_net_demand(net_text, stats.updated or now)
+                self._net_day = parse_net_demand(net_text, reference)
             except CaisoError as err:
                 net_error = str(err)
+            else:
+                # Just after midnight CAISO can still serve yesterday's file; keep refetching until it rolls over.
+                self._net_fetched = now if self._net_day.day == today else None
         if net_error:
             LOGGER.debug("Net demand forecast unavailable: %s", net_error)
+            # Retry next poll; meanwhile keep the last curve only while it's still today's.
+            if self._net_day is not None and self._net_day.day != today:
+                self._net_day = None
 
-        data = derive(stats, net_day, dict(self.config_entry.options), now)
+        data = derive(stats, self._net_day, dict(self.config_entry.options), now)
         data.net_demand_error = net_error
         return data

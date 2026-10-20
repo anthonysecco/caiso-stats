@@ -20,6 +20,7 @@ Data comes from the California ISO's free public [Today's Outlook](https://www.c
 - [Configuration](#configuration)
 - [Entities](#entities)
 - [Load-shifting signals](#load-shifting-signals)
+- [Choosing the right signal](#choosing-the-right-signal)
 - [CO2 intensity index](#co2-intensity-index)
 - [Examples](#examples)
 - [Data and update frequency](#data-and-update-frequency)
@@ -111,7 +112,7 @@ A fresh install enables 12 entities: the load-shifting signals plus the context 
 | `sensor.caiso_net_demand_forecast` | MW | CAISO's net demand forecast for the current interval. The `forecast` attribute holds hourly forecast and actuals for charts; it isn't saved to the database. *Off by default.* |
 | `sensor.caiso_net_demand_peak_forecast` | MW | Today's forecast net demand peak. *Off by default.* |
 | `sensor.caiso_net_demand_peak_time` | timestamp | When that peak is expected. |
-| `sensor.caiso_low_demand_window_start` | timestamp | Start of the lowest-average net demand window (default 3 h) in the rest of today. `end`, `average_mw` and `hours` attributes. |
+| `sensor.caiso_low_demand_window_start` | timestamp | Start of the lowest-average net demand window (default 3 h) in the rest of today. `end`, `average_mw` and `hours` attributes. See [the low demand window, explained](#the-low-demand-window-explained). |
 
 ### Diagnostic
 | Entity | Notes |
@@ -133,6 +134,51 @@ A fresh install enables 12 entities: the load-shifting signals plus the context 
 Every signal publishes its inputs and thresholds as attributes, so you can see why it's on.
 
 > These are grid-wide signals, not your utility bill. Time-of-use rates and local outages are separate. Combine them with your own TOU or price sensors when cost matters.
+
+## Choosing the right signal
+
+### What you get out of the box
+| Entity | Answers |
+|---|---|
+| **Load shift recommendation** | *Should flexible loads run right now?* `use_now`, `normal` or `avoid`. Start here. |
+| **Solar surplus** | *Is the grid wasting clean power right now?* Batteries charging hard, or solar + wind covering half of demand. |
+| **Clean energy now** | *Is power below my CO2 threshold right now?* (default 200 g/kWh) |
+| **Peak demand period** | *Are we in today's evening crunch?* |
+| **Grid stress** | *Is CAISO short or issuing an alert?* |
+| **Low demand window start** | *When should a job I can schedule later today start?* (see below) |
+| **Net demand peak time** | *When is today's crunch?* Finish or pre-cool before this. |
+| **CO2 intensity index** | *How dirty is power now compared with the last 14 days?* 0–100. |
+| **CO2 intensity** | The grid's average CO2 per kWh right now (g/kWh). |
+| **Renewables** | CAISO's renewables share of demand right now. |
+| **Net demand** | Demand that solar and wind aren't covering; the number most signals are built on. |
+| **Grid status** | CAISO's official notice (Normal, Flex Alert, EEA…). |
+
+### Match the signal to the load
+| Kind of load | Examples | Use | How |
+|---|---|---|---|
+| **Runs whenever it's told** | EV charging, pool pump, water heater boost | **Load shift recommendation** | Turn on at `use_now`, off at `avoid`, leave alone at `normal`. Add a deadline fallback (e.g. finish charging by 6 AM). |
+| **One run you can schedule** | Dishwasher, laundry, a 3-hour EV top-up | **Low demand window start** | Use it as a time trigger, or check that `end` is before **Net demand peak time**. |
+| **Get ahead of the peak** | Pre-cooling, pre-heating, charging a home battery | **Net demand peak time** | Start 1–3 hours before it; coast through **Peak demand period**. |
+| **Must-run, nudge only** | Manual chores, cooking | **Load shift recommendation** or **CO2 intensity index** | Notify when `use_now` or index < 25; dashboards. |
+| **Protect the grid** | Big loads during emergencies | **Grid stress** | Pause or alert when on; it also forces `avoid`. |
+
+### The low demand window, explained
+**Low demand window start** answers: *"I have a job that takes about 3 hours and can run any time later today. When should it start?"*
+
+CAISO forecasts net demand for every hour of today. The integration looks at the hours left until midnight, slides a 3-hour box (adjustable in Options) across them, and reports when the lowest-average stretch begins. `end` and `average_mw` are attributes.
+
+Example (Oct 19, 6 PM): the remaining forecast was 27,770 MW at 6 PM, 27,570 at 7, 26,578 at 8, 25,736 at 9, 24,286 at 10 and 22,816 at 11. The lowest 3-hour stretch is 9 PM–midnight, so the sensor read **9:00 PM**. Earlier on a sunny day it usually points at late morning or midday.
+
+Keep in mind:
+- It's a **time**, not a "good right now" signal. For right now, use **Load shift recommendation**.
+- It only looks at **the rest of today**; late in the evening the remaining stretch is short, and it resets at midnight.
+- The window is chosen by average, so it **can run into the evening peak**: in mid-afternoon it may pick e.g. 3:40–6:40 PM, starting in the solar hours but ending after **Net demand peak time**. For loads that must not run during the peak, check `end` against **Net demand peak time**, or shorten the window length in Options.
+
+### Tips
+- **Avoid flapping.** The recommendation and binary signals are re-evaluated every poll (15 min) and can switch back and forth around their thresholds. Use `for:` on triggers (10–15 min) and separate on/off conditions, as in the [examples](docs/automations.md).
+- **Clean energy now vs. CO2 intensity index.** *Clean energy now* uses a fixed threshold (200 g/kWh by default). That's easy in spring and summer middays but rarer in winter. Raise it in Options for winter, or use the **CO2 intensity index**, which adapts automatically because it compares with the last 14 days.
+- **Combine with your rate plan.** These signals are about the grid, not your bill. For example, require both `use_now` and your utility's off-peak period for the EV.
+- **Look at the reasons.** Every signal's attributes list its inputs and thresholds, so a quick look in **Developer tools → States** shows why it's on.
 
 ## CO2 intensity index
 

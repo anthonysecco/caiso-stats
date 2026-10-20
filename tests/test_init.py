@@ -10,7 +10,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.caiso_stats.const import DEFAULT_OPTIONS, DOMAIN, NET_DEMAND_URL, STATS_URL
 
-
 ENABLED_BY_DEFAULT = {
     "sensor.caiso_load_shift_recommendation",
     "binary_sensor.caiso_grid_stress",

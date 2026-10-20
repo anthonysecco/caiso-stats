@@ -81,7 +81,7 @@ Entity IDs below assume the default device name **CAISO**. All power values are 
 | `sensor.caiso_grid_status` | enum | `normal`, `rmo`, `flex_alert`, `eea_watch`, `transmission_emergency`, `eea_1`, `eea_2`, `eea_3`, `other`. The most severe notice wins. `notices` holds CAISO's raw text. |
 | `sensor.caiso_demand` | MW | Current system demand. |
 | `sensor.caiso_net_demand` | MW | Demand minus solar and wind: what dispatchable plants, batteries and imports must cover. |
-| `sensor.caiso_todays_peak_demand` | MW | Highest demand so far today (`peak_time` attribute). |
+| `sensor.caiso_today_s_peak_demand` | MW | Highest demand so far today (`peak_time` attribute). |
 | `sensor.caiso_forecast_peak_demand_today` | MW | CAISO's forecast peak for today (`peak_time` attribute). |
 | `sensor.caiso_forecast_peak_demand_tomorrow` | MW | Forecast peak for tomorrow. |
 | `sensor.caiso_operating_reserve` | MW | Current operating reserve. |

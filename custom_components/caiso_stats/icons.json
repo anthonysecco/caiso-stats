@@ -1,0 +1,82 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "grid_stress": {
+        "default": "mdi:transmission-tower",
+        "state": { "on": "mdi:transmission-tower-off" }
+      },
+      "peak_period": {
+        "default": "mdi:chart-bell-curve",
+        "state": { "on": "mdi:chart-bell-curve-cumulative" }
+      },
+      "clean_energy_now": {
+        "default": "mdi:leaf-off",
+        "state": { "on": "mdi:leaf" }
+      },
+      "solar_surplus": {
+        "default": "mdi:solar-power",
+        "state": { "on": "mdi:solar-power-variant" }
+      }
+    },
+    "sensor": {
+      "load_shift_recommendation": {
+        "default": "mdi:swap-horizontal-circle",
+        "state": {
+          "avoid": "mdi:power-plug-off",
+          "normal": "mdi:power-plug",
+          "use_now": "mdi:power-plug-battery"
+        }
+      },
+      "grid_status": {
+        "default": "mdi:transmission-tower",
+        "state": {
+          "normal": "mdi:transmission-tower",
+          "rmo": "mdi:wrench-clock",
+          "flex_alert": "mdi:alert",
+          "eea_watch": "mdi:alert-outline",
+          "transmission_emergency": "mdi:transmission-tower-off",
+          "eea_1": "mdi:alert-circle",
+          "eea_2": "mdi:alert-octagon",
+          "eea_3": "mdi:alert-octagram",
+          "other": "mdi:information-outline"
+        }
+      },
+      "demand": { "default": "mdi:home-lightning-bolt" },
+      "net_demand": { "default": "mdi:chart-bell-curve" },
+      "todays_peak_demand": { "default": "mdi:arrow-collapse-up" },
+      "forecast_peak_demand_today": { "default": "mdi:chart-timeline-variant-shimmer" },
+      "forecast_peak_demand_tomorrow": { "default": "mdi:calendar-arrow-right" },
+      "current_reserve": { "default": "mdi:battery-charging-high" },
+      "required_reserve": { "default": "mdi:battery-alert-variant-outline" },
+      "reserve_ratio": { "default": "mdi:scale-balance" },
+      "available_capacity": { "default": "mdi:factory" },
+      "unloaded_capacity_10m": { "default": "mdi:timer-outline" },
+      "unloaded_capacity_1h": { "default": "mdi:timer-sand" },
+      "unloaded_capacity_4h": { "default": "mdi:timer-sand-complete" },
+      "solar": { "default": "mdi:solar-power-variant" },
+      "wind": { "default": "mdi:wind-turbine" },
+      "geothermal": { "default": "mdi:volcano" },
+      "biomass": { "default": "mdi:sprout" },
+      "biogas": { "default": "mdi:gas-cylinder" },
+      "small_hydro": { "default": "mdi:water" },
+      "large_hydro": { "default": "mdi:hydro-power" },
+      "nuclear": { "default": "mdi:atom" },
+      "natural_gas": { "default": "mdi:fire" },
+      "coal": { "default": "mdi:factory" },
+      "imports": { "default": "mdi:transmission-tower-import" },
+      "other": { "default": "mdi:help-circle-outline" },
+      "batteries": { "default": "mdi:home-battery" },
+      "hybrids": { "default": "mdi:solar-power" },
+      "renewables": { "default": "mdi:leaf" },
+      "clean_energy": { "default": "mdi:leaf-circle" },
+      "solar_wind_share": { "default": "mdi:weather-sunny" },
+      "co2_emissions": { "default": "mdi:molecule-co2" },
+      "co2_intensity": { "default": "mdi:molecule-co2" },
+      "net_demand_forecast": { "default": "mdi:chart-timeline-variant" },
+      "net_demand_peak_forecast": { "default": "mdi:arrow-collapse-up" },
+      "net_demand_peak_time": { "default": "mdi:clock-alert-outline" },
+      "low_demand_window_start": { "default": "mdi:clock-check-outline" },
+      "data_time": { "default": "mdi:update" }
+    }
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "CAISO Stats",
+        "description": "Adds California ISO grid conditions (status, demand, reserves, supply mix, CO2) and load-shifting signals. Uses CAISO's free public Today's Outlook feeds; no account or key needed. Polls every 15 minutes by default."
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach CAISO's stats feed. Check the internet connection and try again."
+    },
+    "abort": {
+      "single_instance_allowed": "CAISO Stats is already configured. Change its settings under Configure."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "CAISO Stats options",
+        "description": "Polling interval and the thresholds behind the load-shifting signals.",
+        "data": {
+          "scan_interval": "Update interval",
+          "clean_co2_threshold": "Clean energy CO2 threshold",
+          "peak_percent": "Peak period threshold",
+          "reserve_ratio_threshold": "Grid stress reserve threshold",
+          "surplus_battery_mw": "Solar surplus: battery charging",
+          "surplus_share": "Solar surplus: solar + wind share",
+          "window_hours": "Low demand window length"
+        },
+        "data_description": {
+          "scan_interval": "How often to fetch both feeds (5-60 minutes). CAISO refreshes them every 5 minutes.",
+          "clean_co2_threshold": "Clean energy now is on when grid CO2 intensity is at or below this.",
+          "peak_percent": "Peak demand period is on when net demand reaches this share of today's forecast net demand peak.",
+          "reserve_ratio_threshold": "Grid stress is on when operating reserve falls below this share of the required reserve (or CAISO reports any non-normal grid status).",
+          "surplus_battery_mw": "Solar surplus is on when grid batteries are charging at least this hard...",
+          "surplus_share": "...or when solar + wind supply at least this share of demand.",
+          "window_hours": "Length of the lowest net demand window searched for in the rest of today's forecast."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "grid_stress": { "name": "Grid stress" },
+      "peak_period": { "name": "Peak demand period" },
+      "clean_energy_now": { "name": "Clean energy now" },
+      "solar_surplus": { "name": "Solar surplus" }
+    },
+    "sensor": {
+      "load_shift_recommendation": {
+        "name": "Load shift recommendation",
+        "state": {
+          "avoid": "Avoid",
+          "normal": "Normal",
+          "use_now": "Use now"
+        }
+      },
+      "grid_status": {
+        "name": "Grid status",
+        "state": {
+          "normal": "Normal",
+          "rmo": "Restricted Maintenance Operations",
+          "flex_alert": "Flex Alert",
+          "eea_watch": "EEA Watch",
+          "transmission_emergency": "Transmission Emergency",
+          "eea_1": "Energy Emergency Alert 1",
+          "eea_2": "Energy Emergency Alert 2",
+          "eea_3": "Energy Emergency Alert 3",
+          "other": "Other notice"
+        }
+      },
+      "demand": { "name": "Demand" },
+      "net_demand": { "name": "Net demand" },
+      "todays_peak_demand": { "name": "Today's peak demand" },
+      "forecast_peak_demand_today": { "name": "Forecast peak demand today" },
+      "forecast_peak_demand_tomorrow": { "name": "Forecast peak demand tomorrow" },
+      "current_reserve": { "name": "Operating reserve" },
+      "required_reserve": { "name": "Required reserve" },
+      "reserve_ratio": { "name": "Reserve ratio" },
+      "available_capacity": { "name": "Available capacity" },
+      "unloaded_capacity_10m": { "name": "Unloaded capacity 10 min" },
+      "unloaded_capacity_1h": { "name": "Unloaded capacity 1 h" },
+      "unloaded_capacity_4h": { "name": "Unloaded capacity 4 h" },
+      "solar": { "name": "Solar" },
+      "wind": { "name": "Wind" },
+      "geothermal": { "name": "Geothermal" },
+      "biomass": { "name": "Biomass" },
+      "biogas": { "name": "Biogas" },
+      "small_hydro": { "name": "Small hydro" },
+      "large_hydro": { "name": "Large hydro" },
+      "nuclear": { "name": "Nuclear" },
+      "natural_gas": { "name": "Natural gas" },
+      "coal": { "name": "Coal" },
+      "imports": { "name": "Imports" },
+      "other": { "name": "Other generation" },
+      "batteries": { "name": "Batteries" },
+      "hybrids": { "name": "Hybrids" },
+      "renewables": { "name": "Renewables" },
+      "clean_energy": { "name": "Clean energy" },
+      "solar_wind_share": { "name": "Solar and wind share" },
+      "co2_emissions": { "name": "CO2 emissions" },
+      "co2_intensity": { "name": "CO2 intensity" },
+      "net_demand_forecast": { "name": "Net demand forecast" },
+      "net_demand_peak_forecast": { "name": "Net demand peak forecast" },
+      "net_demand_peak_time": { "name": "Net demand peak time" },
+      "low_demand_window_start": { "name": "Low demand window start" },
+      "data_time": { "name": "Data time" }
+    }
+  }
+}

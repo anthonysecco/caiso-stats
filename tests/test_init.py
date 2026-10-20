@@ -29,6 +29,7 @@ ENABLED_BY_DEFAULT = {
     "sensor.caiso_co2_intensity",
     "sensor.caiso_net_demand_peak_time",
     "sensor.caiso_low_demand_window_start",
+    "sensor.caiso_data_updated",
 }
 
 

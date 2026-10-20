@@ -280,7 +280,6 @@ SENSORS: tuple[CaisoSensorDescription, ...] = (
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda d: d.stats.updated,
-        entity_registry_enabled_default=False,
     ),
 )
 

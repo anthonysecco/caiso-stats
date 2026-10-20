@@ -69,7 +69,7 @@ Copy `custom_components/caiso_stats` from the [latest release](https://github.co
 
 Entity IDs below assume the default device name **CAISO**. All power values are in MW for the whole CAISO balancing area.
 
-A fresh install enables 12 entities: the load-shifting signals plus the context that explains them (grid status, net demand, renewables share, CO2 intensity and its 0–100 index, the net demand peak time and the low demand window). Everything marked *Off by default* is created disabled. To turn one on, open **Settings → Devices & services → CAISO Stats → entities**, select it and choose **Enable**. Disabled entities record no history, which keeps the database small.
+A fresh install enables 13 entities: the load-shifting signals plus the context that explains them (grid status, net demand, renewables share, CO2 intensity and its 0–100 index, the net demand peak time, the low demand window and when the data was last updated). Everything marked *Off by default* is created disabled. To turn one on, open **Settings → Devices & services → CAISO Stats → entities**, select it and choose **Enable**. Disabled entities record no history, which keeps the database small.
 
 ### Load-shifting signals
 | Entity | Type | Meaning |
@@ -117,7 +117,7 @@ A fresh install enables 12 entities: the load-shifting signals plus the context 
 ### Diagnostic
 | Entity | Notes |
 |---|---|
-| `sensor.caiso_data_time` | Time of CAISO's snapshot. *Off by default.* |
+| `sensor.caiso_data_updated` | When CAISO last updated its live snapshot (every 5 minutes on its side). Installs from before 0.2.1 keep the ID `sensor.caiso_data_time`, disabled unless you enabled it. |
 
 ## Load-shifting signals
 
@@ -152,6 +152,7 @@ Every signal publishes its inputs and thresholds as attributes, so you can see w
 | **Renewables** | CAISO's renewables share of demand right now. |
 | **Net demand** | Demand that solar and wind aren't covering; the number most signals are built on. |
 | **Grid status** | CAISO's official notice (Normal, Flex Alert, EEA…). |
+| **Data updated** | When CAISO last refreshed its numbers, so you can tell the signals are current. |
 
 ### Match the signal to the load
 | Kind of load | Examples | Use | How |

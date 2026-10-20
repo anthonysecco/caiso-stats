@@ -106,7 +106,7 @@
       "net_demand_peak_forecast": { "name": "Net demand peak forecast" },
       "net_demand_peak_time": { "name": "Net demand peak time" },
       "low_demand_window_start": { "name": "Low demand window start" },
-      "data_time": { "name": "Data time" }
+      "data_time": { "name": "Data updated" }
     }
   }
 }

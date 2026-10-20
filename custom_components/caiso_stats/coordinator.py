@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -16,6 +17,7 @@ from .api import CaisoClient, CaisoError, NetDemandDay, Stats, parse_net_demand,
 from .const import (
     CAISO_TZ,
     CONF_CLEAN_CO2,
+    CONF_INDEX_DAYS,
     CONF_PEAK_PERCENT,
     CONF_RESERVE_RATIO,
     CONF_SCAN_INTERVAL,
@@ -24,10 +26,14 @@ from .const import (
     CONF_WINDOW_HOURS,
     DEFAULT_OPTIONS,
     DOMAIN,
+    HISTORY_RETRY_HOURS,
     LOGGER,
+    MAX_INDEX_DAYS,
+    MIN_INDEX_DAYS,
     NET_DEMAND_REFRESH_MINUTE,
     scan_interval,
 )
+from .history import IndexRange, IntensityHistory, co2_index
 
 type CaisoConfigEntry = ConfigEntry[CaisoCoordinator]
 
@@ -51,7 +57,6 @@ class CaisoData:
     grid_status: str
     reserve_ratio: float | None
     co2_intensity: float | None
-    clean_percent: float | None
     variable_renewable_share: float | None
     peak_mw: float | None
     peak_time: datetime | None
@@ -61,6 +66,8 @@ class CaisoData:
     peak_period: bool | None
     solar_surplus: bool | None
     recommendation: str
+    co2_index: int | None = None
+    index_range: IndexRange | None = None
 
 
 def _ratio(num: float | None, den: float | None) -> float | None:
@@ -112,8 +119,14 @@ def net_demand_due(fetched: datetime | None, now: datetime) -> bool:
     return fetched < refresh
 
 
-def derive(stats: Stats, net_day: NetDemandDay | None, options: dict[str, Any], now: datetime) -> CaisoData:
-    """Compute every derived value from one stats snapshot and today's forecast."""
+def derive(
+    stats: Stats,
+    net_day: NetDemandDay | None,
+    options: dict[str, Any],
+    now: datetime,
+    index_range: IndexRange | None = None,
+) -> CaisoData:
+    """Compute every derived value from one stats snapshot, today's forecast and the CO2 history range."""
     opts = {**DEFAULT_OPTIONS, **options}
     demand = stats.num("CurrentSystemDemand")
     net_demand = stats.num("CurrentNetDemand")
@@ -121,8 +134,6 @@ def derive(stats: Stats, net_day: NetDemandDay | None, options: dict[str, Any], 
     reserve_ratio = _ratio(stats.num("Current_reserve"), stats.num("Required_reserve"))
     intensity = stats.num("currentCo2intensity")
     co2_intensity = round(intensity * 1000, 1) if intensity is not None else None
-    clean = _sum(stats.num("currentRenewables"), stats.num("currentLargeHydro"), stats.num("currentNuclear"))
-    clean_percent = _ratio(clean, demand)
     vre_share = _ratio(_sum(stats.num("currentSolar"), stats.num("currentWind")), demand)
 
     peak_mw = peak_time = low_window = None
@@ -170,7 +181,6 @@ def derive(stats: Stats, net_day: NetDemandDay | None, options: dict[str, Any], 
         grid_status=status,
         reserve_ratio=reserve_ratio,
         co2_intensity=co2_intensity,
-        clean_percent=clean_percent,
         variable_renewable_share=vre_share,
         peak_mw=peak_mw,
         peak_time=peak_time,
@@ -180,6 +190,8 @@ def derive(stats: Stats, net_day: NetDemandDay | None, options: dict[str, Any], 
         peak_period=peak_period,
         solar_surplus=solar_surplus,
         recommendation=recommendation,
+        co2_index=co2_index(co2_intensity, index_range),
+        index_range=index_range,
     )
 
 
@@ -202,6 +214,44 @@ class CaisoCoordinator(DataUpdateCoordinator[CaisoData]):
         self.raw_net_demand: str | None = None
         self._net_day: NetDemandDay | None = None
         self._net_fetched: datetime | None = None
+        self.history = IntensityHistory(hass)
+        self._backfill_task: asyncio.Task[None] | None = None
+        self._backfill_tried: datetime | None = None
+
+    @property
+    def index_days(self) -> int:
+        """Days of history behind the CO2 intensity index."""
+        days = int(self.config_entry.options.get(CONF_INDEX_DAYS, DEFAULT_OPTIONS[CONF_INDEX_DAYS]))
+        return max(MIN_INDEX_DAYS, min(MAX_INDEX_DAYS, days))
+
+    async def _async_setup(self) -> None:
+        """Load the stored CO2 history before the first update."""
+        await self.history.async_load()
+
+    def _maybe_backfill(self, now: datetime) -> None:
+        """Start downloading missing history days in the background (at most hourly after a failure)."""
+        if self._backfill_task is not None and not self._backfill_task.done():
+            return
+        if self._backfill_tried and now - self._backfill_tried < timedelta(hours=HISTORY_RETRY_HOURS):
+            return
+        missing = self.history.missing_days(now, self.index_days)
+        if not missing:
+            return
+        self._backfill_tried = now
+        self._backfill_task = self.config_entry.async_create_background_task(
+            self.hass, self._async_backfill(missing), f"{DOMAIN} CO2 history backfill"
+        )
+
+    async def _async_backfill(self, days: list[date]) -> None:
+        added = await self.history.async_backfill(self.client, days)
+        if added:
+            # All in: no retry wait needed. Then refresh the index without waiting for the next poll.
+            self._backfill_tried = None if len(days) == added else self._backfill_tried
+            if self.data is not None:
+                window = self.history.window(dt_util.now(), self.index_days)
+                self.data.index_range = window
+                self.data.co2_index = co2_index(self.data.co2_intensity, window)
+                self.async_update_listeners()
 
     async def _async_update_data(self) -> CaisoData:
         now = dt_util.now()
@@ -232,6 +282,8 @@ class CaisoCoordinator(DataUpdateCoordinator[CaisoData]):
             if self._net_day is not None and self._net_day.day != today:
                 self._net_day = None
 
-        data = derive(stats, self._net_day, dict(self.config_entry.options), now)
+        window = self.history.window(now, self.index_days)
+        data = derive(stats, self._net_day, dict(self.config_entry.options), now, window)
         data.net_demand_error = net_error
+        self._maybe_backfill(now)
         return data

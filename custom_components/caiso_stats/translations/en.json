@@ -25,7 +25,8 @@
           "reserve_ratio_threshold": "Grid stress reserve threshold",
           "surplus_battery_mw": "Solar surplus: battery charging",
           "surplus_share": "Solar surplus: solar + wind share",
-          "window_hours": "Low demand window length"
+          "window_hours": "Low demand window length",
+          "index_days": "CO2 intensity index window"
         },
         "data_description": {
           "scan_interval": "How often to poll CAISO (5-60 minutes). Live stats are fetched every poll; the net demand forecast about once an hour.",
@@ -34,7 +35,8 @@
           "reserve_ratio_threshold": "Grid stress is on when operating reserve falls below this share of the required reserve (or CAISO reports any non-normal grid status).",
           "surplus_battery_mw": "Solar surplus is on when grid batteries are charging at least this hard...",
           "surplus_share": "...or when solar + wind supply at least this share of demand.",
-          "window_hours": "Length of the lowest net demand window searched for in the rest of today's forecast."
+          "window_hours": "Length of the lowest net demand window searched for in the rest of today's forecast.",
+          "index_days": "Days of history (7-30) whose cleanest and dirtiest hour set the CO2 intensity index's 0 and 100."
         }
       }
     }
@@ -96,10 +98,10 @@
       "batteries": { "name": "Batteries" },
       "hybrids": { "name": "Hybrids" },
       "renewables": { "name": "Renewables" },
-      "clean_energy": { "name": "Clean energy" },
       "solar_wind_share": { "name": "Solar and wind share" },
       "co2_emissions": { "name": "CO2 emissions" },
       "co2_intensity": { "name": "CO2 intensity" },
+      "co2_intensity_index": { "name": "CO2 intensity index" },
       "net_demand_forecast": { "name": "Net demand forecast" },
       "net_demand_peak_forecast": { "name": "Net demand peak forecast" },
       "net_demand_peak_time": { "name": "Net demand peak time" },

@@ -6,6 +6,7 @@ Catches upstream format changes. Run from the repo root: python scripts/check_li
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timedelta
 from pathlib import Path
 import sys
 
@@ -13,7 +14,8 @@ import aiohttp
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from custom_components.caiso_stats.api import CaisoClient, parse_net_demand, parse_stats
+from custom_components.caiso_stats.api import CaisoClient, CaisoError, DayIntensity, parse_net_demand, parse_stats
+from custom_components.caiso_stats.const import CAISO_TZ
 from custom_components.caiso_stats.coordinator import derive
 
 REQUIRED = (
@@ -33,7 +35,14 @@ REQUIRED = (
 
 async def main() -> int:
     async with aiohttp.ClientSession() as session:
-        stats_text, net_text = await CaisoClient(session).fetch()
+        client = CaisoClient(session)
+        stats_text, net_text = await client.fetch()
+        # Two days back is always published (yesterday appears just after midnight PT).
+        history_day = datetime.now(CAISO_TZ).date() - timedelta(days=2)
+        try:
+            past: DayIntensity | CaisoError = await client.history_day(history_day)
+        except CaisoError as err:
+            past = err
     stats = parse_stats(stats_text)
     missing = [k for k in REQUIRED if stats.num(k) is None]
     problems = [f"stats.txt missing/non-numeric: {', '.join(missing)}"] if missing else []
@@ -56,6 +65,15 @@ async def main() -> int:
         f"co2={data.co2_intensity} g/kWh net_demand_peak={peak} "
         f"low_window={window} recommendation={data.recommendation}"
     )
+    if isinstance(past, CaisoError):
+        problems.append(f"history {history_day}: {past}")
+    else:
+        print(
+            f"history {history_day}: cleanest {past.min_g} g/kWh at {past.min_hour}:00, "
+            f"dirtiest {past.max_g} g/kWh at {past.max_hour}:00 ({past.hours} hours)"
+        )
+        if past.hours < 20:
+            problems.append(f"history {history_day} has only {past.hours} complete hours")
     for p in problems:
         print("PROBLEM:", p)
     return 1 if problems else 0

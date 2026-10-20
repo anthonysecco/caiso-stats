@@ -20,6 +20,7 @@ Data comes from the California ISO's free public [Today's Outlook](https://www.c
 - [Configuration](#configuration)
 - [Entities](#entities)
 - [Load-shifting signals](#load-shifting-signals)
+- [CO2 intensity index](#co2-intensity-index)
 - [Examples](#examples)
 - [Data and update frequency](#data-and-update-frequency)
 - [Troubleshooting](#troubleshooting)
@@ -53,7 +54,7 @@ Copy `custom_components/caiso_stats` from the [latest release](https://github.co
 **Settings → Devices & services → CAISO Stats → Configure.** Saving reloads the integration.
 
 | Option | Default | What it does |
-|---|---|---|---|
+|---|---|---|
 | Update interval | 15 min | How often CAISO is polled (5–60 min). Each poll fetches the live stats; the net demand forecast is refetched about once an hour (see [Data and update frequency](#data-and-update-frequency)). |
 | Clean energy CO2 threshold | 200 g/kWh | **Clean energy now** turns on at or below this grid CO2 intensity. |
 | Peak period threshold | 90 % | **Peak demand period** turns on when net demand reaches this share of today's forecast net demand peak. |
@@ -61,16 +62,17 @@ Copy `custom_components/caiso_stats` from the [latest release](https://github.co
 | Solar surplus: battery charging | 1000 MW | **Solar surplus** turns on when grid batteries are charging at least this hard… |
 | Solar surplus: solar + wind share | 50 % | …or when solar plus wind supply at least this share of demand. |
 | Low demand window length | 3 h | Length of the lowest net demand window searched for in the rest of today's forecast. |
+| CO2 intensity index window | 14 days | Days of history (7–30) whose cleanest and dirtiest hour set the [CO2 intensity index](#co2-intensity-index)'s 0 and 100. |
 
 ## Entities
 
 Entity IDs below assume the default device name **CAISO**. All power values are in MW for the whole CAISO balancing area.
 
-A fresh install enables 11 entities: the load-shifting signals plus the context that explains them (grid status, net demand, clean energy share, CO2 intensity, the net demand peak time and the low demand window). Everything marked *Off by default* is created disabled. To turn one on, open **Settings → Devices & services → CAISO Stats → entities**, select it and choose **Enable**. Disabled entities record no history, which keeps the database small.
+A fresh install enables 12 entities: the load-shifting signals plus the context that explains them (grid status, net demand, renewables share, CO2 intensity and its 0–100 index, the net demand peak time and the low demand window). Everything marked *Off by default* is created disabled. To turn one on, open **Settings → Devices & services → CAISO Stats → entities**, select it and choose **Enable**. Disabled entities record no history, which keeps the database small.
 
 ### Load-shifting signals
 | Entity | Type | Meaning |
-|---|---|---|---|
+|---|---|---|
 | `sensor.caiso_load_shift_recommendation` | enum: `avoid` / `normal` / `use_now` | One signal for most automations (see [logic](#load-shifting-signals)). Attributes give each input. |
 | `binary_sensor.caiso_grid_stress` | problem | Non-normal grid status (Flex Alert, EEA…) or reserves below threshold. |
 | `binary_sensor.caiso_peak_demand_period` | on/off | Net demand near today's forecast peak. Usually the late-afternoon and evening ramp. |
@@ -79,7 +81,7 @@ A fresh install enables 11 entities: the load-shifting signals plus the context 
 
 ### Grid
 | Entity | Unit | Notes |
-|---|---|---|---|
+|---|---|---|
 | `sensor.caiso_grid_status` | enum | `normal`, `rmo`, `flex_alert`, `eea_watch`, `transmission_emergency`, `eea_1`, `eea_2`, `eea_3`, `other`. The most severe notice wins. `notices` holds CAISO's raw text. |
 | `sensor.caiso_demand` | MW | Current system demand. *Off by default.* |
 | `sensor.caiso_net_demand` | MW | Demand minus solar and wind: what dispatchable plants, batteries and imports must cover. |
@@ -93,19 +95,19 @@ A fresh install enables 11 entities: the load-shifting signals plus the context 
 
 ### Supply mix and emissions
 | Entity | Unit | Notes |
-|---|---|---|---|
+|---|---|---|
 | `sensor.caiso_solar`, `_wind`, `_geothermal`, `_biomass`, `_biogas`, `_small_hydro`, `_large_hydro`, `_nuclear`, `_natural_gas`, `_coal`, `_imports` | MW | Current output by source. *Off by default.* |
 | `sensor.caiso_batteries` | MW | **Negative = charging**, positive = discharging. `mode`, `standalone_mw` and `hybrid_mw` attributes. *Off by default.* |
 | `sensor.caiso_other_generation`, `sensor.caiso_hybrids` | MW | *Off by default.* |
-| `sensor.caiso_renewables` | % | CAISO's renewables share of demand. *Off by default.* |
-| `sensor.caiso_clean_energy` | % | Renewables + large hydro + nuclear, as a share of demand. |
+| `sensor.caiso_renewables` | % | CAISO's own renewables share of demand, the figure on its Today's Outlook page. Counts solar, wind, geothermal, biomass, biogas and small hydro (California's renewables-standard definition); large hydro and nuclear don't count. |
 | `sensor.caiso_solar_and_wind_share` | % | Solar + wind share of demand. *Off by default.* |
 | `sensor.caiso_co2_emissions` | t/h | Metric tons of CO2 per hour from CAISO-area generation and imports. *Off by default.* |
 | `sensor.caiso_co2_intensity` | g/kWh | Average CO2 per kWh served right now. |
+| `sensor.caiso_co2_intensity_index` | 0–100 | How dirty the grid is right now compared with the last 14 days: 0 = the cleanest hour, 100 = the dirtiest. See [CO2 intensity index](#co2-intensity-index). |
 
 ### Net demand forecast (rest of today)
 | Entity | Unit | Notes |
-|---|---|---|---|
+|---|---|---|
 | `sensor.caiso_net_demand_forecast` | MW | CAISO's net demand forecast for the current interval. The `forecast` attribute holds hourly forecast and actuals for charts; it isn't saved to the database. *Off by default.* |
 | `sensor.caiso_net_demand_peak_forecast` | MW | Today's forecast net demand peak. *Off by default.* |
 | `sensor.caiso_net_demand_peak_time` | timestamp | When that peak is expected. |
@@ -123,7 +125,7 @@ A fresh install enables 11 entities: the load-shifting signals plus the context 
 `sensor.caiso_load_shift_recommendation` combines the four binary signals:
 
 | State | When | Suggested use |
-|---|---|---|---|
+|---|---|---|
 | `avoid` | **Grid stress** *or* **Peak demand period** | Pause flexible loads; pre-cool or pre-heat beforehand. |
 | `use_now` | Not `avoid`, and **Solar surplus** *or* **Clean energy now** | Start EV charging, water heater boost, pool pump, laundry. |
 | `normal` | Anything else | No strong signal either way. |
@@ -131,6 +133,25 @@ A fresh install enables 11 entities: the load-shifting signals plus the context 
 Every signal publishes its inputs and thresholds as attributes, so you can see why it's on.
 
 > These are grid-wide signals, not your utility bill. Time-of-use rates and local outages are separate. Combine them with your own TOU or price sensors when cost matters.
+
+## CO2 intensity index
+
+`sensor.caiso_co2_intensity_index` puts the grid's current CO2 intensity on a 0–100 scale relative to recent history:
+
+> **index = (current intensity − cleanest hour) ÷ (dirtiest hour − cleanest hour) × 100**, clamped to 0–100
+
+- **Current intensity** is the live 5-minute value (`sensor.caiso_co2_intensity`, g/kWh): CAISO's total CO2 divided by demand.
+- **Cleanest and dirtiest hour** are hourly averages over the last **14 complete days** (adjustable 7–30 in Options), built from CAISO's daily history files with the same definition. Hourly averages keep a single odd 5-minute reading from setting the scale.
+- **0** means as clean as any hour in the window, **100** as dirty. Readings outside the window's range are clamped, so a new record low or high shows as 0 or 100.
+- Attributes: `window_min` / `window_max` (g/kWh), `window_min_hour` / `window_max_hour` (when they happened), `window_days`.
+
+Example from October 2026: over Oct 6–19 the cleanest hour was 50 g/kWh (Oct 13, 9 AM, a sunny low-demand morning) and the dirtiest 342 g/kWh (Oct 7, 4 AM). On Oct 20 the index read about 100 overnight, 58 at 8 AM and 40–50 through midday.
+
+**What it is and isn't:**
+- It reflects the **average** grid mix, so it's a good "how clean is power right now, compared with lately" gauge for dashboards and automations.
+- It is **not** marginal emissions like WattTime's MOER, which estimates which plant answers *your* extra load. And it compares against the **past** 14 days, not the next 24 hours. For the best time later today, use **Low demand window start**.
+
+**History:** on first install the integration downloads the last 14 days in the background (28 small files), then adds yesterday's two files once a day after CAISO publishes them, just after midnight Pacific. Only each day's cleanest and dirtiest hour is kept, in Home Assistant's storage, so restarts don't download anything again. The index stays unavailable until 3 days are in; that usually takes about a minute after setup. Days CAISO's server fails to deliver are retried an hour later.
 
 ## Examples
 
@@ -160,6 +181,7 @@ automation:
 |---|---|---|---|
 | Stats snapshot | `https://wwwmobile.caiso.com/outlook/SP/stats.txt` | Status, demand, reserves, supply mix, CO2 | Every poll |
 | Net demand curve | `https://www.caiso.com/outlook/current/netdemand.csv` | Today's net demand forecast, peak and low window | About once an hour |
+| Daily history | `https://www.caiso.com/outlook/history/YYYYMMDD/co2.csv` and `demand.csv` | The CO2 intensity index's 14-day range | 28 files once (backfill), then 2 a day |
 
 - CAISO refreshes both files every 5 minutes. This integration polls every **15 minutes** by default, with a 30 s timeout per request. That's frequent enough for load shifting and gentle on a free public service. You can lower it to 5 minutes in Options.
 - The net demand forecast itself only changes about once an hour: around :28 past each hour (Pacific), CAISO revises the coming hour. So the forecast file is fetched on the first poll after :35, on a new day, at startup, and again on the next poll after any failure. At the default interval that's about 24 forecast requests a day instead of 96. Between fetches, the low demand window and the current forecast value are recomputed from the copy already downloaded; the actuals in the `forecast` chart attribute can lag by up to an hour.
@@ -171,6 +193,7 @@ automation:
 
 - **Setup says it can't connect:** check that Home Assistant can reach `wwwmobile.caiso.com` (DNS, firewall, Pi-hole). CAISO occasionally has short maintenance outages; try again in a few minutes.
 - **Forecast sensors unavailable:** `www.caiso.com/outlook/current/netdemand.csv` didn't answer or changed format. The rest keeps working.
+- **CO2 intensity index unavailable:** it needs at least 3 days of history from `www.caiso.com/outlook/history/`. Right after setup that takes about a minute. If it stays unavailable, check that Home Assistant can reach that address; failed days are retried every hour.
 - **Diagnostics:** **Settings → Devices & services → CAISO Stats → ⋮ → Download diagnostics** includes the raw CAISO payloads. Attach it to [issues](https://github.com/anthonysecco/caiso-stats/issues).
 - **Debug logging:**
   ```yaml

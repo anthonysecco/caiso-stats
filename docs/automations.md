@@ -7,6 +7,7 @@ Replace the `switch.*`, `climate.*` and `notify.*` entities with your own. Each 
 - [Water heater boost in the low-demand window](#water-heater-boost-in-the-low-demand-window)
 - [Pre-cool before the evening peak](#pre-cool-before-the-evening-peak)
 - [Nudge to start the dishwasher or laundry](#nudge-to-start-the-dishwasher-or-laundry)
+- [Run when the grid is at its cleanest](#run-when-the-grid-is-at-its-cleanest)
 - [Pool pump only on surplus](#pool-pump-only-on-surplus)
 - [Dashboard cards](#dashboard-cards)
 - [Template ideas](#template-ideas)
@@ -155,8 +156,31 @@ actions:
     data:
       message: >-
         Clean power on the grid right now ({{ states('sensor.caiso_co2_intensity') | int(0) }} g/kWh,
-        {{ states('sensor.caiso_clean_energy') | int(0) }} % clean). Good time for the dishwasher or laundry.
+        {{ states('sensor.caiso_renewables') | int(0) }} % renewable). Good time for the dishwasher or laundry.
 mode: single
+```
+
+## Run when the grid is at its cleanest
+
+The [CO2 intensity index](../README.md#co2-intensity-index) is 0 at the cleanest hour of the last 14 days and 100 at the dirtiest. This starts the water heater boost once the grid reaches its cleanest quarter, and stops it if things get dirty again.
+
+```yaml
+alias: "Water heater: boost when the grid is clean"
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.caiso_co2_intensity_index
+    below: 25
+    for: "00:10:00"
+    id: clean
+  - trigger: numeric_state
+    entity_id: sensor.caiso_co2_intensity_index
+    above: 50
+    id: dirty
+actions:
+  - action: "switch.turn_{{ 'on' if trigger.id == 'clean' else 'off' }}"
+    target:
+      entity_id: switch.water_heater_boost
+mode: restart
 ```
 
 ## Pool pump only on surplus
@@ -189,20 +213,20 @@ cards:
       - type: tile
         entity: sensor.caiso_grid_status
       - type: tile
-        entity: sensor.caiso_clean_energy
+        entity: sensor.caiso_renewables
       - type: tile
         entity: sensor.caiso_net_demand
       - type: tile
         entity: sensor.caiso_low_demand_window_start
   - type: gauge
-    entity: sensor.caiso_co2_intensity
-    name: Grid CO2
+    entity: sensor.caiso_co2_intensity_index
+    name: Grid CO2 vs. last 14 days
     min: 0
-    max: 400
+    max: 100
     severity:
       green: 0
-      yellow: 200
-      red: 300
+      yellow: 35
+      red: 70
   - type: history-graph
     hours_to_show: 24
     entities:

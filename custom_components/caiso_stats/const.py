@@ -12,6 +12,8 @@ LOGGER = logging.getLogger(__package__)
 STATS_URL = "https://wwwmobile.caiso.com/outlook/SP/stats.txt"
 NET_DEMAND_URL = "https://www.caiso.com/outlook/current/netdemand.csv"
 OUTLOOK_URL = "https://www.caiso.com/todays-outlook"
+# Daily history files (Pacific day, YYYYMMDD); `name` is "co2" or "demand".
+HISTORY_URL = "https://www.caiso.com/outlook/history/{day}/{name}.csv"
 
 ATTRIBUTION = "Data from California ISO Today's Outlook (unofficial, not affiliated with CAISO)"
 CAISO_TZ = ZoneInfo("America/Los_Angeles")
@@ -28,6 +30,7 @@ CONF_RESERVE_RATIO = "reserve_ratio_threshold"  # % of required reserve
 CONF_WINDOW_HOURS = "window_hours"
 CONF_SURPLUS_BATTERY = "surplus_battery_mw"  # MW of battery charging
 CONF_SURPLUS_SHARE = "surplus_share"  # % of demand met by solar + wind
+CONF_INDEX_DAYS = "index_days"  # days of history behind the CO2 intensity index
 
 DEFAULT_SCAN_INTERVAL = 15
 MIN_SCAN_INTERVAL = 5
@@ -38,6 +41,12 @@ DEFAULT_RESERVE_RATIO = 150
 DEFAULT_WINDOW_HOURS = 3
 DEFAULT_SURPLUS_BATTERY = 1000
 DEFAULT_SURPLUS_SHARE = 50
+DEFAULT_INDEX_DAYS = 14
+MIN_INDEX_DAYS = 7
+MAX_INDEX_DAYS = 30
+INDEX_MIN_HISTORY_DAYS = 3  # the index stays unavailable until this many days are stored
+HISTORY_PUBLISH_HOUR = 1  # CAISO posts a day's history file just after midnight; ask after 01:00 PT
+HISTORY_RETRY_HOURS = 1  # wait this long before retrying days that failed to download
 
 DEFAULT_OPTIONS = {
     CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
@@ -47,6 +56,7 @@ DEFAULT_OPTIONS = {
     CONF_WINDOW_HOURS: DEFAULT_WINDOW_HOURS,
     CONF_SURPLUS_BATTERY: DEFAULT_SURPLUS_BATTERY,
     CONF_SURPLUS_SHARE: DEFAULT_SURPLUS_SHARE,
+    CONF_INDEX_DAYS: DEFAULT_INDEX_DAYS,
 }
 
 

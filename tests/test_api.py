@@ -10,14 +10,46 @@ import pytest
 from custom_components.caiso_stats.api import (
     CaisoError,
     normalize_status,
+    parse_day_intensity,
     parse_net_demand,
     parse_stats,
     worst_status,
 )
 from custom_components.caiso_stats.const import CAISO_TZ
 from custom_components.caiso_stats.coordinator import derive, lowest_window, net_demand_due
+from custom_components.caiso_stats.history import IndexRange, co2_index
+
+from .conftest import load_fixture
 
 SLOT = datetime(2026, 10, 19, 18, 0, tzinfo=CAISO_TZ)
+
+
+def test_parse_day_intensity() -> None:
+    """Oct 13, 2026: a sunny, low-demand day; cleanest hour 9 AM at about 50 g/kWh."""
+    day = parse_day_intensity(load_fixture("history_co2.csv"), load_fixture("history_demand.csv"))
+    assert day.hours == 24
+    assert day.min_hour == 9
+    assert day.min_g == pytest.approx(50.1, abs=0.2)
+    assert day.max_g > 250
+    assert 0 <= day.max_hour < 24
+
+
+def test_parse_day_intensity_rejects_other_files() -> None:
+    with pytest.raises(CaisoError):
+        parse_day_intensity("Time,Solar\n00:00,1\n", "Time,Current demand\n00:00,1\n")
+    with pytest.raises(CaisoError):
+        parse_day_intensity("Time,Natural Gas CO2\n00:00,1\n", "Time,Day ahead forecast,Current demand\n")
+
+
+def test_co2_index() -> None:
+    at = datetime(2026, 10, 13, 9, tzinfo=CAISO_TZ)
+    window = IndexRange(min_g=50, min_at=at, max_g=350, max_at=at, days=14)
+    assert co2_index(200, window) == 50
+    assert co2_index(20, window) == 0  # cleaner than anything in the window
+    assert co2_index(400, window) == 100  # dirtier than anything in the window
+    assert co2_index(None, window) is None
+    assert co2_index(200, None) is None
+    assert co2_index(200, IndexRange(min_g=100, min_at=at, max_g=100, max_at=at, days=3)) is None
 
 
 def test_parse_stats(stats_text: str) -> None:
@@ -88,8 +120,8 @@ def test_derive_from_fixtures(stats_text: str, net_demand_text: str) -> None:
     data = derive(stats, parse_net_demand(net_demand_text, SLOT), {}, SLOT)
     assert data.grid_status == "normal"
     assert data.reserve_ratio == pytest.approx(329.4, abs=0.1)
+    assert data.co2_index is None  # no history range passed
     assert data.co2_intensity == pytest.approx(213.5, abs=0.1)
-    assert data.clean_percent == pytest.approx((3976 + 1893 + 1104) / 31245 * 100, abs=0.1)
     assert data.peak_mw == 27770
     assert data.peak_time == datetime(2026, 10, 19, 18, 5, tzinfo=CAISO_TZ)
     assert data.grid_stress is False

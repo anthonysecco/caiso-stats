@@ -22,7 +22,16 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: CaisoCo
             "grid_status": data.grid_status,
             "reserve_ratio": data.reserve_ratio,
             "co2_intensity": data.co2_intensity,
-            "clean_percent": data.clean_percent,
+            "co2_intensity_index": data.co2_index,
+            "index_window": None
+            if data.index_range is None
+            else {
+                "min": data.index_range.min_g,
+                "min_hour": data.index_range.min_at.isoformat(),
+                "max": data.index_range.max_g,
+                "max_hour": data.index_range.max_at.isoformat(),
+                "days": data.index_range.days,
+            },
             "peak_mw": data.peak_mw,
             "peak_time": data.peak_time.isoformat() if data.peak_time else None,
             "low_window": None

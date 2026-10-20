@@ -120,6 +120,20 @@ def _window_attrs(d: CaisoData) -> dict[str, Any]:
     }
 
 
+def _index_attrs(d: CaisoData) -> dict[str, Any]:
+    r = d.index_range
+    if r is None:
+        return {}
+    return {
+        "co2_intensity": d.co2_intensity,
+        "window_min": r.min_g,
+        "window_min_hour": r.min_at.isoformat(),
+        "window_max": r.max_g,
+        "window_max_hour": r.max_at.isoformat(),
+        "window_days": r.days,
+    }
+
+
 def _recommendation_attrs(d: CaisoData) -> dict[str, Any]:
     return {
         "grid_stress": d.grid_stress,
@@ -191,8 +205,8 @@ SENSORS: tuple[CaisoSensorDescription, ...] = (
     _mw("other", "currentOther", entity_registry_enabled_default=False),
     _mw("batteries", "currentBatteries", attrs_fn=_battery_attrs, entity_registry_enabled_default=False),
     _mw("hybrids", "currentHybrids", entity_registry_enabled_default=False),
-    _pct("renewables", _num("renewablesPercent"), entity_registry_enabled_default=False),
-    _pct("clean_energy", lambda d: d.clean_percent),
+    # CAISO's own renewables share of demand (California RPS sources; excludes large hydro and nuclear).
+    _pct("renewables", _num("renewablesPercent")),
     _pct("solar_wind_share", lambda d: d.variable_renewable_share, entity_registry_enabled_default=False),
     CaisoSensorDescription(
         key="co2_emissions",
@@ -210,6 +224,15 @@ SENSORS: tuple[CaisoSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         value_fn=lambda d: d.co2_intensity,
+    ),
+    CaisoSensorDescription(
+        key="co2_intensity_index",
+        translation_key="co2_intensity_index",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        value_fn=lambda d: d.co2_index,
+        attrs_fn=_index_attrs,
+        available_fn=lambda d: d.index_range is not None,
     ),
     # --- net demand forecast (netdemand.csv) ---
     CaisoSensorDescription(

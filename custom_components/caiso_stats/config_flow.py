@@ -13,6 +13,7 @@ import voluptuous as vol
 from .api import CaisoClient, CaisoError, parse_stats
 from .const import (
     CONF_CLEAN_CO2,
+    CONF_INDEX_DAYS,
     CONF_PEAK_PERCENT,
     CONF_RESERVE_RATIO,
     CONF_SCAN_INTERVAL,
@@ -22,7 +23,9 @@ from .const import (
     DEFAULT_OPTIONS,
     DOMAIN,
     LOGGER,
+    MAX_INDEX_DAYS,
     MAX_SCAN_INTERVAL,
+    MIN_INDEX_DAYS,
     MIN_SCAN_INTERVAL,
 )
 from .coordinator import CaisoConfigEntry
@@ -44,6 +47,7 @@ OPTION_FIELDS = {
     CONF_SURPLUS_BATTERY: _number(0, 20000, 100, "MW"),
     CONF_SURPLUS_SHARE: _number(10, 150, 5, "%"),
     CONF_WINDOW_HOURS: _number(0.5, 12, 0.5, "h"),
+    CONF_INDEX_DAYS: _number(MIN_INDEX_DAYS, MAX_INDEX_DAYS, 1, "d"),
 }
 
 

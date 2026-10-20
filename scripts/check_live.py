@@ -13,8 +13,8 @@ import aiohttp
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from custom_components.caiso_stats.api import CaisoClient, parse_net_demand, parse_stats  # noqa: E402
-from custom_components.caiso_stats.coordinator import derive  # noqa: E402
+from custom_components.caiso_stats.api import CaisoClient, parse_net_demand, parse_stats
+from custom_components.caiso_stats.coordinator import derive
 
 REQUIRED = (
     "CurrentSystemDemand",
@@ -47,10 +47,13 @@ async def main() -> int:
         if len(day.points) < 280:
             problems.append(f"netdemand.csv has only {len(day.points)} rows")
     data = derive(stats, day, {}, stats.updated)
+    w = data.low_window
+    window = f"{w.start:%H:%M}-{w.end:%H:%M} avg {w.average_mw:.0f} MW" if w else None
+    peak = f"{data.peak_mw:.0f} MW at {data.peak_time:%H:%M}" if data.peak_time else None
     print(
-        f"{stats.updated:%Y-%m-%d %H:%M} status={data.grid_status} demand={stats.num('CurrentSystemDemand')} "
-        f"reserve_ratio={data.reserve_ratio}% co2={data.co2_intensity} g/kWh peak={data.peak_mw} "
-        f"window={data.low_window} recommendation={data.recommendation}"
+        f"{stats.updated:%Y-%m-%d %H:%M} PT status={data.grid_status} "
+        f"demand={stats.num('CurrentSystemDemand'):.0f} MW reserve_ratio={data.reserve_ratio}% co2={data.co2_intensity} g/kWh net_demand_peak={peak} "
+        f"low_window={window} recommendation={data.recommendation}"
     )
     for p in problems:
         print("PROBLEM:", p)

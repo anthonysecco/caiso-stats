@@ -176,6 +176,8 @@ async def test_co2_intensity_index(hass: HomeAssistant, mock_caiso, freezer) -> 
     state = hass.states.get("sensor.caiso_co2_intensity_index")
     assert int(state.state) == round((213.5 - day.min_g) / (day.max_g - day.min_g) * 100)
     assert state.attributes["window_days"] == 14
+    assert state.attributes["unit_of_measurement"] == "%"
+    assert state.attributes["friendly_name"] == "CAISO CO2 Intensity Index"
     assert state.attributes["window_min"] == day.min_g
     assert state.attributes["window_max"] == day.max_g
     assert state.attributes["window_min_hour"].endswith("T09:00:00-07:00")

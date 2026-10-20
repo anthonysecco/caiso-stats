@@ -104,7 +104,7 @@ A fresh install enables 13 entities: the load-shifting signals plus the context 
 | `sensor.caiso_solar_and_wind_share` | % | Solar + wind share of demand. *Off by default.* |
 | `sensor.caiso_co2_emissions` | t/h | Metric tons of CO2 per hour from CAISO-area generation and imports. *Off by default.* |
 | `sensor.caiso_co2_intensity` | g/kWh | Average CO2 per kWh served right now. |
-| `sensor.caiso_co2_intensity_index` | 0–100 | How dirty the grid is right now compared with the last 14 days: 0 = the cleanest hour, 100 = the dirtiest. See [CO2 intensity index](#co2-intensity-index). |
+| `sensor.caiso_co2_intensity_index` | % | **CAISO CO2 Intensity Index.** How dirty the grid is right now compared with the last 14 days: 0 % = the cleanest hour, 100 % = the dirtiest. See [CO2 intensity index](#co2-intensity-index). |
 
 ### Net demand forecast (rest of today)
 | Entity | Unit | Notes |
@@ -147,7 +147,7 @@ Every signal publishes its inputs and thresholds as attributes, so you can see w
 | **Grid stress** | *Is CAISO short or issuing an alert?* |
 | **Low demand window start** | *When should a job I can schedule later today start?* (see below) |
 | **Net demand peak time** | *When is today's crunch?* Finish or pre-cool before this. |
-| **CO2 intensity index** | *How dirty is power now compared with the last 14 days?* 0–100. |
+| **CAISO CO2 Intensity Index** | *How dirty is power now compared with the last 14 days?* 0–100 %. |
 | **CO2 intensity** | The grid's average CO2 per kWh right now (g/kWh). |
 | **Renewables** | CAISO's renewables share of demand right now. |
 | **Net demand** | Demand that solar and wind aren't covering; the number most signals are built on. |
@@ -183,7 +183,7 @@ Keep in mind:
 
 ## CO2 intensity index
 
-`sensor.caiso_co2_intensity_index` puts the grid's current CO2 intensity on a 0–100 scale relative to recent history:
+`sensor.caiso_co2_intensity_index` (**CAISO CO2 Intensity Index**) puts the grid's current CO2 intensity on a 0–100 % scale relative to recent history:
 
 > **index = (current intensity − cleanest hour) ÷ (dirtiest hour − cleanest hour) × 100**, clamped to 0–100
 

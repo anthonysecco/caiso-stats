@@ -228,6 +228,7 @@ SENSORS: tuple[CaisoSensorDescription, ...] = (
     CaisoSensorDescription(
         key="co2_intensity_index",
         translation_key="co2_intensity_index",
+        native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         value_fn=lambda d: d.co2_index,

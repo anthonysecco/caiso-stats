@@ -101,7 +101,7 @@
       "solar_wind_share": { "name": "Solar and wind share" },
       "co2_emissions": { "name": "CO2 emissions" },
       "co2_intensity": { "name": "CO2 intensity" },
-      "co2_intensity_index": { "name": "CO2 intensity index" },
+      "co2_intensity_index": { "name": "CO2 Intensity Index" },
       "net_demand_forecast": { "name": "Net demand forecast" },
       "net_demand_peak_forecast": { "name": "Net demand peak forecast" },
       "net_demand_peak_time": { "name": "Net demand peak time" },

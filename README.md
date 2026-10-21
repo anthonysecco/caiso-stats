@@ -11,8 +11,6 @@ Data comes from the California ISO's free public [Today's Outlook](https://www.c
 
 > **Unofficial.** This project is not affiliated with or endorsed by the California ISO. It reads the same public files that power CAISO's website and mobile app. They're undocumented and can change without notice. A daily CI job checks the live feeds so breakage shows up quickly.
 
-> **AI Coded.** This project is has been largely built and coded by AI.
-
 <img width="483" height="888" alt="image" src="https://github.com/user-attachments/assets/909be513-37ca-4e05-8160-d2a1bdbe481b" /><img width="485" height="915" alt="image" src="https://github.com/user-attachments/assets/84ef5d56-251b-4568-8424-1df0ee62ac46" />
 
 ## Contents
@@ -260,6 +258,10 @@ python scripts/check_live.py   # parse CAISO's live feeds
 ```
 
 CI runs HACS validation, hassfest, ruff and pytest on every push, plus a daily check against the live feeds.
+
+## AI Disclosure
+
+This project was built largely with AI coding tools (Claude). I directed the design and reviewed the changes, but most of the code and documentation was written by AI. Please review the code before relying on it, and open an issue if you find a problem.
 
 ## License
 

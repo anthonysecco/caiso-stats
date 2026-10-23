@@ -4,6 +4,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/anthonysecco/caiso-stats)](https://github.com/anthonysecco/caiso-stats/releases)
 [![Validate](https://github.com/anthonysecco/caiso-stats/actions/workflows/validate.yml/badge.svg)](https://github.com/anthonysecco/caiso-stats/actions/workflows/validate.yml)
 [![Tests](https://github.com/anthonysecco/caiso-stats/actions/workflows/tests.yml/badge.svg)](https://github.com/anthonysecco/caiso-stats/actions/workflows/tests.yml)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-donate-yellow.svg)](https://www.buymeacoffee.com/anthonysecco)
 
 California's grid, live in Home Assistant: grid status and Flex Alerts, demand and net demand, operating reserves, the supply mix, CO2 intensity, and **ready-made load-shifting signals**. Use them to run the EV charger, water heater, pool pump or dishwasher when the grid is clean and has spare capacity, and to back off when it's stressed.
 
@@ -258,6 +259,10 @@ python scripts/check_live.py   # parse CAISO's live feeds
 ```
 
 CI runs HACS validation, hassfest, ruff and pytest on every push, plus a daily check against the live feeds.
+
+## 💖 Support
+
+If you found this project useful, consider [buying me a coffee](https://www.buymeacoffee.com/anthonysecco). ☕
 
 ## AI Disclosure
 

@@ -262,7 +262,9 @@ CI runs HACS validation, hassfest, ruff and pytest on every push, plus a daily c
 
 ## 💖 Support
 
-If you found this project useful, consider [buying me a coffee](https://www.buymeacoffee.com/anthonysecco). ☕
+If you found this project useful, consider buying me a coffee. ☕
+
+<a href="https://www.buymeacoffee.com/anthonysecco"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="60" width="217"></a>
 
 ## AI Disclosure
 

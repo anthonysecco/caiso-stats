@@ -2,7 +2,7 @@
 
 Replace the `switch.*`, `climate.*` and `notify.*` entities with your own. Each example works on its own; paste it into **Settings → Automations → ⋮ → Edit in YAML**, or into `automations.yaml` without the leading `- `.
 
-Installs from before 0.3.0 keep the older entity IDs `sensor.caiso_co2_intensity_index` and `binary_sensor.caiso_clean_energy_now`; swap those in where these examples use `sensor.caiso_carbon_intensity_index` and `binary_sensor.caiso_low_carbon_energy_now`.
+Installs from before 0.2.2 keep the older entity IDs `sensor.caiso_co2_intensity_index` and `binary_sensor.caiso_clean_energy_now`; swap those in where these examples use `sensor.caiso_carbon_intensity_index` and `binary_sensor.caiso_low_carbon_energy_now`.
 
 - [Flex Alert / grid notice notifications](#flex-alert--grid-notice-notifications)
 - [EV charging when the grid is clean](#ev-charging-when-the-grid-is-clean)

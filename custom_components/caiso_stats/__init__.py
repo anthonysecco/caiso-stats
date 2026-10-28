@@ -14,7 +14,7 @@ PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
 # Entities earlier versions created that this one no longer provides.
 RETIRED_ENTITIES: tuple[tuple[Platform, str], ...] = (
     (Platform.SENSOR, "clean_energy"),  # removed in 0.2.0
-    # removed in 0.3.0: the load-shifting signals; the integration now mirrors CAISO's own data
+    # removed in 0.2.2: the load-shifting signals; the integration now mirrors CAISO's own data
     (Platform.SENSOR, "load_shift_recommendation"),
     (Platform.BINARY_SENSOR, "peak_period"),
     (Platform.BINARY_SENSOR, "grid_stress"),

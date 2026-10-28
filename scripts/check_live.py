@@ -55,15 +55,11 @@ async def main() -> int:
         day = parse_net_demand(net_text, stats.updated)
         if len(day.points) < 280:
             problems.append(f"netdemand.csv has only {len(day.points)} rows")
-    data = derive(stats, day, {}, stats.updated)
-    w = data.low_window
-    window = f"{w.start:%H:%M}-{w.end:%H:%M} avg {w.average_mw:.0f} MW" if w else None
-    peak = f"{data.peak_mw:.0f} MW at {data.peak_time:%H:%M}" if data.peak_time else None
+    data = derive(stats, day, {})
     print(
         f"{stats.updated:%Y-%m-%d %H:%M} PT status={data.grid_status} "
-        f"demand={stats.num('CurrentSystemDemand'):.0f} MW reserve_ratio={data.reserve_ratio}% "
-        f"co2={data.co2_intensity} g/kWh net_demand_peak={peak} "
-        f"low_window={window} recommendation={data.recommendation}"
+        f"demand={stats.num('CurrentSystemDemand'):.0f} MW net_demand={stats.num('CurrentNetDemand'):.0f} MW "
+        f"co2={data.co2_intensity} g/kWh forecast_rows={len(day.points) if day else None}"
     )
     if isinstance(past, CaisoError):
         problems.append(f"history {history_day}: {past}")

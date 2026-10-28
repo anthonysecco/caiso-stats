@@ -1,32 +1,12 @@
 {
   "entity": {
     "binary_sensor": {
-      "grid_stress": {
-        "default": "mdi:transmission-tower",
-        "state": { "on": "mdi:transmission-tower-off" }
-      },
-      "peak_period": {
-        "default": "mdi:chart-bell-curve",
-        "state": { "on": "mdi:chart-bell-curve-cumulative" }
-      },
       "clean_energy_now": {
         "default": "mdi:leaf-off",
         "state": { "on": "mdi:leaf" }
-      },
-      "solar_surplus": {
-        "default": "mdi:solar-power",
-        "state": { "on": "mdi:solar-power-variant" }
       }
     },
     "sensor": {
-      "load_shift_recommendation": {
-        "default": "mdi:swap-horizontal-circle",
-        "state": {
-          "avoid": "mdi:power-plug-off",
-          "normal": "mdi:power-plug",
-          "use_now": "mdi:power-plug-battery"
-        }
-      },
       "grid_status": {
         "default": "mdi:transmission-tower",
         "state": {
@@ -48,7 +28,6 @@
       "forecast_peak_demand_tomorrow": { "default": "mdi:calendar-arrow-right" },
       "current_reserve": { "default": "mdi:battery-charging-high" },
       "required_reserve": { "default": "mdi:battery-alert-variant-outline" },
-      "reserve_ratio": { "default": "mdi:scale-balance" },
       "available_capacity": { "default": "mdi:factory" },
       "unloaded_capacity_10m": { "default": "mdi:timer-outline" },
       "unloaded_capacity_1h": { "default": "mdi:timer-sand" },
@@ -68,14 +47,10 @@
       "batteries": { "default": "mdi:home-battery" },
       "hybrids": { "default": "mdi:solar-power" },
       "renewables": { "default": "mdi:leaf" },
-      "solar_wind_share": { "default": "mdi:weather-sunny" },
       "co2_emissions": { "default": "mdi:molecule-co2" },
       "co2_intensity": { "default": "mdi:molecule-co2" },
       "co2_intensity_index": { "default": "mdi:gauge" },
       "net_demand_forecast": { "default": "mdi:chart-timeline-variant" },
-      "net_demand_peak_forecast": { "default": "mdi:arrow-collapse-up" },
-      "net_demand_peak_time": { "default": "mdi:clock-alert-outline" },
-      "low_demand_window_start": { "default": "mdi:clock-check-outline" },
       "data_time": { "default": "mdi:update" }
     }
   }

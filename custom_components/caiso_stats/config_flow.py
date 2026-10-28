@@ -12,14 +12,9 @@ import voluptuous as vol
 
 from .api import CaisoClient, CaisoError, parse_stats
 from .const import (
-    CONF_CLEAN_CO2,
     CONF_INDEX_DAYS,
-    CONF_PEAK_PERCENT,
-    CONF_RESERVE_RATIO,
+    CONF_LOW_CARBON_INDEX,
     CONF_SCAN_INTERVAL,
-    CONF_SURPLUS_BATTERY,
-    CONF_SURPLUS_SHARE,
-    CONF_WINDOW_HOURS,
     DEFAULT_OPTIONS,
     DOMAIN,
     LOGGER,
@@ -41,12 +36,7 @@ def _number(minimum: float, maximum: float, step: float, unit: str) -> NumberSel
 
 OPTION_FIELDS = {
     CONF_SCAN_INTERVAL: _number(MIN_SCAN_INTERVAL, MAX_SCAN_INTERVAL, 1, "min"),
-    CONF_CLEAN_CO2: _number(0, 1000, 5, "g/kWh"),
-    CONF_PEAK_PERCENT: _number(50, 100, 1, "%"),
-    CONF_RESERVE_RATIO: _number(100, 500, 5, "%"),
-    CONF_SURPLUS_BATTERY: _number(0, 20000, 100, "MW"),
-    CONF_SURPLUS_SHARE: _number(10, 150, 5, "%"),
-    CONF_WINDOW_HOURS: _number(0.5, 12, 0.5, "h"),
+    CONF_LOW_CARBON_INDEX: _number(0, 100, 1, "%"),
     CONF_INDEX_DAYS: _number(MIN_INDEX_DAYS, MAX_INDEX_DAYS, 1, "d"),
 }
 
@@ -79,12 +69,12 @@ class CaisoStatsConfigFlow(ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: CaisoConfigEntry) -> CaisoStatsOptionsFlow:
-        """Thresholds and polling interval."""
+        """Polling interval and carbon index settings."""
         return CaisoStatsOptionsFlow()
 
 
 class CaisoStatsOptionsFlow(OptionsFlowWithReload):
-    """Edit polling interval and load-shift thresholds; the entry reloads on save."""
+    """Edit polling interval and carbon index settings; the entry reloads on save."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Show or save the options."""

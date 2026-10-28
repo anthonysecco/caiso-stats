@@ -17,18 +17,11 @@ from custom_components.caiso_stats.history import IntensityHistory
 from .conftest import load_fixture
 
 ENABLED_BY_DEFAULT = {
-    "sensor.caiso_load_shift_recommendation",
-    "binary_sensor.caiso_grid_stress",
-    "binary_sensor.caiso_peak_demand_period",
-    "binary_sensor.caiso_clean_energy_now",
-    "binary_sensor.caiso_solar_surplus",
     "sensor.caiso_grid_status",
     "sensor.caiso_net_demand",
     "sensor.caiso_renewables",
-    "sensor.caiso_co2_intensity_index",
+    "sensor.caiso_carbon_intensity_index",
     "sensor.caiso_co2_intensity",
-    "sensor.caiso_net_demand_peak_time",
-    "sensor.caiso_low_demand_window_start",
     "sensor.caiso_data_updated",
 }
 
@@ -59,7 +52,12 @@ async def test_default_enabled_entities(hass: HomeAssistant, mock_caiso) -> None
 
 async def test_setup_creates_entities(hass: HomeAssistant, mock_caiso) -> None:
     entry = await _setup(
-        hass, enable=("sensor.caiso_demand", "sensor.caiso_batteries", "sensor.caiso_net_demand_peak_forecast")
+        hass,
+        enable=(
+            "sensor.caiso_demand",
+            "sensor.caiso_batteries",
+            "binary_sensor.caiso_low_carbon_energy_now",
+        ),
     )
     assert entry.state is ConfigEntryState.LOADED
 
@@ -77,29 +75,26 @@ async def test_setup_creates_entities(hass: HomeAssistant, mock_caiso) -> None:
     assert float(hass.states.get("sensor.caiso_co2_intensity").state) == 213.5
     assert hass.states.get("sensor.caiso_co2_intensity").attributes["unit_of_measurement"] == "g/kWh"
     assert hass.states.get("sensor.caiso_batteries").attributes["mode"] == "discharging"
-    assert float(hass.states.get("sensor.caiso_net_demand_peak_forecast").state) == 27770
-    assert hass.states.get("sensor.caiso_net_demand_peak_time").state == "2026-10-20T01:05:00+00:00"
-    assert hass.states.get("sensor.caiso_load_shift_recommendation").state == "avoid"
-    assert hass.states.get("binary_sensor.caiso_grid_stress").state == "off"
-    assert hass.states.get("binary_sensor.caiso_peak_demand_period").state == "on"
-    assert hass.states.get("binary_sensor.caiso_clean_energy_now").state == "off"
-    assert hass.states.get("binary_sensor.caiso_solar_surplus").state == "off"
+
+    day = _fixture_day()
+    index = round((213.5 - day.min_g) / (day.max_g - day.min_g) * 100)
+    clean = hass.states.get("binary_sensor.caiso_low_carbon_energy_now")
+    assert clean.state == ("on" if index <= 25 else "off")
+    assert clean.attributes["co2_intensity_index"] == index
+    assert clean.attributes["index_threshold"] == 25
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert entry.state is ConfigEntryState.NOT_LOADED
 
 
 async def test_forecast_feed_down(hass: HomeAssistant, aioclient_mock, stats_text) -> None:
-    """Live stats still work when netdemand.csv fails; forecast entities go unavailable."""
+    """Live stats still work when netdemand.csv fails; the forecast sensor goes unavailable."""
     aioclient_mock.get(STATS_URL, text=stats_text)
     aioclient_mock.get(NET_DEMAND_URL, status=503)
-    entry = await _setup(hass)
+    entry = await _setup(hass, enable=("sensor.caiso_net_demand_forecast",))
     assert entry.state is ConfigEntryState.LOADED
     assert float(hass.states.get("sensor.caiso_net_demand").state) == 28542
-    assert hass.states.get("sensor.caiso_net_demand_peak_time").state == STATE_UNAVAILABLE
-    assert hass.states.get("sensor.caiso_low_demand_window_start").state == STATE_UNAVAILABLE
-    # peak period falls back to demand vs. CAISO's forecast demand peak
-    assert hass.states.get("binary_sensor.caiso_peak_demand_period").state == "on"
+    assert hass.states.get("sensor.caiso_net_demand_forecast").state == STATE_UNAVAILABLE
 
 
 def _csv_fetches(aioclient_mock) -> int:
@@ -116,7 +111,7 @@ async def test_forecast_fetched_hourly(hass: HomeAssistant, mock_caiso, freezer)
     freezer.move_to("2026-10-19 18:20:00-07:00")
     await coordinator.async_refresh()
     assert _csv_fetches(mock_caiso) == 1
-    assert hass.states.get("sensor.caiso_net_demand_peak_time").state == "2026-10-20T01:05:00+00:00"
+    assert coordinator.data.net_demand is not None  # kept from the earlier fetch
 
     freezer.move_to("2026-10-19 18:40:00-07:00")
     await coordinator.async_refresh()
@@ -131,7 +126,7 @@ async def test_forecast_retried_after_failure(
     aioclient_mock.get(STATS_URL, text=stats_text)
     aioclient_mock.get(NET_DEMAND_URL, status=503)
     entry = await _setup(hass)
-    assert hass.states.get("sensor.caiso_net_demand_peak_time").state == STATE_UNAVAILABLE
+    assert entry.runtime_data.data.net_demand is None
 
     aioclient_mock.clear_requests()
     aioclient_mock.get(STATS_URL, text=stats_text)
@@ -139,7 +134,7 @@ async def test_forecast_retried_after_failure(
     freezer.move_to("2026-10-19 18:05:00-07:00")
     await entry.runtime_data.async_refresh()
     await hass.async_block_till_done()
-    assert hass.states.get("sensor.caiso_net_demand_peak_time").state == "2026-10-20T01:05:00+00:00"
+    assert entry.runtime_data.data.net_demand is not None
 
 
 async def test_stats_feed_down_retries(hass: HomeAssistant, aioclient_mock) -> None:
@@ -154,7 +149,7 @@ async def test_diagnostics(hass: HomeAssistant, mock_caiso) -> None:
 
     entry = await _setup(hass)
     diag = await async_get_config_entry_diagnostics(hass, entry)
-    assert diag["derived"]["recommendation"] == "avoid"
+    assert diag["derived"]["grid_status"] == "normal"
     assert diag["stats"]["CurrentSystemDemand"] == 31245
 
 
@@ -173,11 +168,11 @@ async def test_co2_intensity_index(hass: HomeAssistant, mock_caiso, freezer) -> 
     assert _history_fetches(mock_caiso) == 28  # 14 days x (co2.csv + demand.csv)
 
     day = _fixture_day()
-    state = hass.states.get("sensor.caiso_co2_intensity_index")
+    state = hass.states.get("sensor.caiso_carbon_intensity_index")
     assert int(state.state) == round((213.5 - day.min_g) / (day.max_g - day.min_g) * 100)
     assert state.attributes["window_days"] == 14
     assert state.attributes["unit_of_measurement"] == "%"
-    assert state.attributes["friendly_name"] == "CAISO CO2 Intensity Index"
+    assert state.attributes["friendly_name"] == "CAISO Carbon Intensity Index"
     assert state.attributes["window_min"] == day.min_g
     assert state.attributes["window_max"] == day.max_g
     assert state.attributes["window_min_hour"].endswith("T09:00:00-07:00")
@@ -191,7 +186,7 @@ async def test_history_survives_restart(hass: HomeAssistant, mock_caiso, freezer
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
     assert _history_fetches(mock_caiso) == fetched  # loaded from storage, nothing re-downloaded
-    assert hass.states.get("sensor.caiso_co2_intensity_index").state not in (STATE_UNAVAILABLE, "unknown")
+    assert hass.states.get("sensor.caiso_carbon_intensity_index").state not in (STATE_UNAVAILABLE, "unknown")
 
 
 async def test_backfill_skips_failures_and_waits_for_enough_days(hass: HomeAssistant) -> None:
@@ -222,18 +217,31 @@ async def test_backfill_skips_failures_and_waits_for_enough_days(hass: HomeAssis
     assert short.window(now, 14) is None
 
 
-async def test_retired_clean_energy_sensor_removed(hass: HomeAssistant, mock_caiso) -> None:
+async def test_retired_entities_removed(hass: HomeAssistant, mock_caiso) -> None:
+    """Entities from earlier versions are removed from the registry on setup."""
     entry = MockConfigEntry(domain=DOMAIN, title="CAISO", data={}, options=dict(DEFAULT_OPTIONS))
     entry.add_to_hass(hass)
     registry = er.async_get(hass)
-    old = registry.async_get_or_create(
-        "sensor",
-        DOMAIN,
-        f"{entry.entry_id}_clean_energy",
-        config_entry=entry,
-        suggested_object_id="caiso_clean_energy",
-    )
+    retired = [
+        ("sensor", "clean_energy"),
+        ("sensor", "load_shift_recommendation"),
+        ("binary_sensor", "peak_period"),
+        ("binary_sensor", "grid_stress"),
+        ("binary_sensor", "solar_surplus"),
+        ("sensor", "reserve_ratio"),
+        ("sensor", "solar_wind_share"),
+        ("sensor", "net_demand_peak_time"),
+        ("sensor", "net_demand_peak_forecast"),
+        ("sensor", "low_demand_window_start"),
+    ]
+    old = [
+        registry.async_get_or_create(
+            platform, DOMAIN, f"{entry.entry_id}_{key}", config_entry=entry, suggested_object_id=f"caiso_{key}"
+        )
+        for platform, key in retired
+    ]
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
-    assert registry.async_get(old.entity_id) is None
+    for item in old:
+        assert registry.async_get(item.entity_id) is None
     assert hass.states.get("sensor.caiso_renewables") is not None

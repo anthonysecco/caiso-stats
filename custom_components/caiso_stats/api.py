@@ -7,7 +7,7 @@ Both feeds are free and need no key:
 - netdemand.csv: today's 5-minute demand / net demand curve, including CAISO's
   net demand forecast for the rest of the day (times are Pacific).
 - history/YYYYMMDD/co2.csv and demand.csv: a past day's 5-minute CO2 (t/h by source)
-  and demand, used for the CO2 intensity index's 14-day range.
+  and demand, used for the carbon intensity index's 14-day range.
 """
 
 from __future__ import annotations

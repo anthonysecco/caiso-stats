@@ -12,8 +12,6 @@ Data comes from the California ISO's free public [Today's Outlook](https://www.c
 
 > **Unofficial.** This project is not affiliated with or endorsed by the California ISO. It reads the same public files that power CAISO's website and mobile app. They're undocumented and can change without notice. A daily CI job checks the live feeds so breakage shows up quickly.
 
-<img width="483" height="888" alt="image" src="https://github.com/user-attachments/assets/909be513-37ca-4e05-8160-d2a1bdbe481b" /><img width="485" height="915" alt="image" src="https://github.com/user-attachments/assets/84ef5d56-251b-4568-8424-1df0ee62ac46" />
-
 ## Contents
 - [Installation](#installation)
 - [Configuration](#configuration)

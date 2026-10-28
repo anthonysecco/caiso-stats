@@ -24,23 +24,13 @@ NET_DEMAND_REFRESH_MINUTE = 35
 
 # Options
 CONF_SCAN_INTERVAL = "scan_interval"  # minutes
-CONF_CLEAN_CO2 = "clean_co2_threshold"  # g/kWh
-CONF_PEAK_PERCENT = "peak_percent"  # % of today's forecast net-demand peak
-CONF_RESERVE_RATIO = "reserve_ratio_threshold"  # % of required reserve
-CONF_WINDOW_HOURS = "window_hours"
-CONF_SURPLUS_BATTERY = "surplus_battery_mw"  # MW of battery charging
-CONF_SURPLUS_SHARE = "surplus_share"  # % of demand met by solar + wind
-CONF_INDEX_DAYS = "index_days"  # days of history behind the CO2 intensity index
+CONF_LOW_CARBON_INDEX = "low_carbon_index_threshold"  # carbon intensity index, 0-100
+CONF_INDEX_DAYS = "index_days"  # days of history behind the carbon intensity index
 
 DEFAULT_SCAN_INTERVAL = 15
 MIN_SCAN_INTERVAL = 5
 MAX_SCAN_INTERVAL = 60
-DEFAULT_CLEAN_CO2 = 200
-DEFAULT_PEAK_PERCENT = 90
-DEFAULT_RESERVE_RATIO = 150
-DEFAULT_WINDOW_HOURS = 3
-DEFAULT_SURPLUS_BATTERY = 1000
-DEFAULT_SURPLUS_SHARE = 50
+DEFAULT_LOW_CARBON_INDEX = 25
 DEFAULT_INDEX_DAYS = 14
 MIN_INDEX_DAYS = 7
 MAX_INDEX_DAYS = 30
@@ -50,12 +40,7 @@ HISTORY_RETRY_HOURS = 1  # wait this long before retrying days that failed to do
 
 DEFAULT_OPTIONS = {
     CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
-    CONF_CLEAN_CO2: DEFAULT_CLEAN_CO2,
-    CONF_PEAK_PERCENT: DEFAULT_PEAK_PERCENT,
-    CONF_RESERVE_RATIO: DEFAULT_RESERVE_RATIO,
-    CONF_WINDOW_HOURS: DEFAULT_WINDOW_HOURS,
-    CONF_SURPLUS_BATTERY: DEFAULT_SURPLUS_BATTERY,
-    CONF_SURPLUS_SHARE: DEFAULT_SURPLUS_SHARE,
+    CONF_LOW_CARBON_INDEX: DEFAULT_LOW_CARBON_INDEX,
     CONF_INDEX_DAYS: DEFAULT_INDEX_DAYS,
 }
 

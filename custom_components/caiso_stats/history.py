@@ -1,4 +1,4 @@
-"""CO2 intensity history behind the 0-100 CO2 intensity index.
+"""CO2 intensity history behind the 0-100 carbon intensity index.
 
 Index = (current intensity - lowest hour) / (highest hour - lowest hour) x 100, clamped to 0-100,
 where the lowest and highest hours are hourly-average intensities over the last N complete days

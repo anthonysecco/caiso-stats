@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -25,7 +25,6 @@ PARALLEL_UPDATES = 0
 
 UNIT_CO2_RATE = "t/h"
 UNIT_CO2_INTENSITY = "g/kWh"
-RECOMMENDATION_OPTIONS = ["avoid", "normal", "use_now"]
 
 StateType = str | float | datetime | None
 
@@ -111,15 +110,6 @@ def _forecast_attrs(d: CaisoData) -> dict[str, Any]:
     return {"forecast": hourly}
 
 
-def _window_attrs(d: CaisoData) -> dict[str, Any]:
-    w = d.low_window
-    return {
-        "end": w.end.isoformat() if w else None,
-        "average_mw": w.average_mw if w else None,
-        "hours": round((w.end - w.start) / timedelta(hours=1), 2) if w else None,
-    }
-
-
 def _index_attrs(d: CaisoData) -> dict[str, Any]:
     r = d.index_range
     if r is None:
@@ -134,25 +124,7 @@ def _index_attrs(d: CaisoData) -> dict[str, Any]:
     }
 
 
-def _recommendation_attrs(d: CaisoData) -> dict[str, Any]:
-    return {
-        "grid_stress": d.grid_stress,
-        "peak_period": d.peak_period,
-        "solar_surplus": d.solar_surplus,
-        "clean_now": d.clean_now,
-    }
-
-
 SENSORS: tuple[CaisoSensorDescription, ...] = (
-    # --- load-shift signal ---
-    CaisoSensorDescription(
-        key="load_shift_recommendation",
-        translation_key="load_shift_recommendation",
-        device_class=SensorDeviceClass.ENUM,
-        options=RECOMMENDATION_OPTIONS,
-        value_fn=lambda d: d.recommendation,
-        attrs_fn=_recommendation_attrs,
-    ),
     # --- grid ---
     CaisoSensorDescription(
         key="grid_status",
@@ -185,12 +157,11 @@ SENSORS: tuple[CaisoSensorDescription, ...] = (
     _mw("forecast_peak_demand_tomorrow", "tomorrowsForecastPeakDemand", entity_registry_enabled_default=False),
     _mw("current_reserve", "Current_reserve", entity_registry_enabled_default=False),
     _mw("required_reserve", "Required_reserve", entity_registry_enabled_default=False),
-    _pct("reserve_ratio", lambda d: d.reserve_ratio, entity_registry_enabled_default=False),
     _mw("available_capacity", "AvailableCapacity", entity_registry_enabled_default=False),
     _mw("unloaded_capacity_10m", "Unloaded_capacity_10M", entity_registry_enabled_default=False),
     _mw("unloaded_capacity_1h", "Unloaded_capacity_1H", entity_registry_enabled_default=False),
     _mw("unloaded_capacity_4h", "Unloaded_capacity_4H", entity_registry_enabled_default=False),
-    # --- supply mix: clean energy % and CO2 intensity stay enabled, the per-source detail doesn't ---
+    # --- supply mix: renewables %, CO2 intensity and the index stay enabled, the per-source detail doesn't ---
     _mw("solar", "currentSolar", entity_registry_enabled_default=False),
     _mw("wind", "currentWind", entity_registry_enabled_default=False),
     _mw("geothermal", "currentGeothermal", entity_registry_enabled_default=False),
@@ -207,7 +178,6 @@ SENSORS: tuple[CaisoSensorDescription, ...] = (
     _mw("hybrids", "currentHybrids", entity_registry_enabled_default=False),
     # CAISO's own renewables share of demand (California RPS sources; excludes large hydro and nuclear).
     _pct("renewables", _num("renewablesPercent")),
-    _pct("solar_wind_share", lambda d: d.variable_renewable_share, entity_registry_enabled_default=False),
     CaisoSensorDescription(
         key="co2_emissions",
         translation_key="co2_emissions",
@@ -247,32 +217,6 @@ SENSORS: tuple[CaisoSensorDescription, ...] = (
         attrs_fn=_forecast_attrs,
         available_fn=_has_forecast,
         entity_registry_enabled_default=False,
-    ),
-    CaisoSensorDescription(
-        key="net_demand_peak_forecast",
-        translation_key="net_demand_peak_forecast",
-        native_unit_of_measurement=UnitOfPower.MEGA_WATT,
-        device_class=SensorDeviceClass.POWER,
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=0,
-        value_fn=lambda d: d.peak_mw,
-        available_fn=_has_forecast,
-        entity_registry_enabled_default=False,
-    ),
-    CaisoSensorDescription(
-        key="net_demand_peak_time",
-        translation_key="net_demand_peak_time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda d: d.peak_time,
-        available_fn=_has_forecast,
-    ),
-    CaisoSensorDescription(
-        key="low_demand_window_start",
-        translation_key="low_demand_window_start",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda d: d.low_window.start if d.low_window else None,
-        attrs_fn=_window_attrs,
-        available_fn=_has_forecast,
     ),
     # --- diagnostics ---
     CaisoSensorDescription(

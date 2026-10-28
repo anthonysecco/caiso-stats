@@ -2,17 +2,18 @@
 
 Replace the `switch.*`, `climate.*` and `notify.*` entities with your own. Each example works on its own; paste it into **Settings → Automations → ⋮ → Edit in YAML**, or into `automations.yaml` without the leading `- `.
 
-- [Flex Alert / grid stress notifications](#flex-alert--grid-stress-notifications)
-- [EV charging that follows the grid](#ev-charging-that-follows-the-grid)
-- [Water heater boost in the low-demand window](#water-heater-boost-in-the-low-demand-window)
-- [Pre-cool before the evening peak](#pre-cool-before-the-evening-peak)
+Installs from before 0.2.2 keep the older entity IDs `sensor.caiso_co2_intensity_index` and `binary_sensor.caiso_clean_energy_now`; swap those in where these examples use `sensor.caiso_carbon_intensity_index` and `binary_sensor.caiso_low_carbon_energy_now`.
+
+- [Flex Alert / grid notice notifications](#flex-alert--grid-notice-notifications)
+- [EV charging when the grid is clean](#ev-charging-when-the-grid-is-clean)
+- [Water heater boost when the grid is clean](#water-heater-boost-when-the-grid-is-clean)
+- [Ease off during the evening ramp](#ease-off-during-the-evening-ramp)
 - [Nudge to start the dishwasher or laundry](#nudge-to-start-the-dishwasher-or-laundry)
-- [Run when the grid is at its cleanest](#run-when-the-grid-is-at-its-cleanest)
-- [Pool pump only on surplus](#pool-pump-only-on-surplus)
+- [Pool pump while grid batteries are charging](#pool-pump-while-grid-batteries-are-charging)
 - [Dashboard cards](#dashboard-cards)
 - [Template ideas](#template-ideas)
 
-## Flex Alert / grid stress notifications
+## Flex Alert / grid notice notifications
 
 ```yaml
 alias: "Grid: status changed"
@@ -28,26 +29,31 @@ actions:
         {{ 'California grid back to normal' if trigger.to_state.state == 'normal'
            else 'California grid: ' ~ state_translated('sensor.caiso_grid_status') }}
       message: >-
-        Reserve ratio {{ state_attr('binary_sensor.caiso_grid_stress', 'reserve_ratio') | float(0) | round | int }} %,
-        net demand {{ states('sensor.caiso_net_demand') | int(0) }} MW.
+        Net demand {{ states('sensor.caiso_net_demand') | int(0) }} MW.
         {% if trigger.to_state.state != 'normal' %}Please minimise use, especially 4–9 pm.{% endif %}
 mode: queued
 ```
 
-## EV charging that follows the grid
+## EV charging when the grid is clean
 
-Charge on `use_now`, stop on `avoid`, and leave the charger alone otherwise. A safety net still finishes charging by morning.
+Charge while **Low Carbon Energy Now** is on (enable it first; it's off by default), and pause during any CAISO grid notice. A safety net still finishes charging by morning.
 
 ```yaml
-alias: "EV: follow CAISO signal"
+alias: "EV: charge on clean power"
 triggers:
   - trigger: state
-    entity_id: sensor.caiso_load_shift_recommendation
-    to: use_now
+    entity_id: binary_sensor.caiso_low_carbon_energy_now
+    to: "on"
+    for: "00:10:00"
     id: start
   - trigger: state
-    entity_id: sensor.caiso_load_shift_recommendation
-    to: avoid
+    entity_id: binary_sensor.caiso_low_carbon_energy_now
+    to: "off"
+    for: "00:10:00"
+    id: stop
+  - trigger: state
+    entity_id: sensor.caiso_grid_status
+    from: normal
     id: stop
   - trigger: time
     at: "00:30:00"
@@ -57,6 +63,9 @@ actions:
       - conditions:
           - condition: trigger
             id: [start, overnight]
+          - condition: state
+            entity_id: sensor.caiso_grid_status
+            state: normal
         sequence:
           - action: switch.turn_on
             target:
@@ -71,109 +80,20 @@ actions:
 mode: single
 ```
 
-## Water heater boost in the low-demand window
+## Water heater boost when the grid is clean
 
-`sensor.caiso_low_demand_window_start` is a timestamp, so a time trigger can fire on it directly.
-
-```yaml
-alias: "Water heater: boost in CAISO low-demand window"
-triggers:
-  - trigger: time
-    at: sensor.caiso_low_demand_window_start
-conditions:
-  - condition: state
-    entity_id: binary_sensor.caiso_grid_stress
-    state: "off"
-actions:
-  - action: water_heater.set_operation_mode
-    target:
-      entity_id: water_heater.tank
-    data:
-      operation_mode: high_demand
-  - delay:
-      hours: "{{ state_attr('sensor.caiso_low_demand_window_start', 'hours') | float(3) }}"
-  - action: water_heater.set_operation_mode
-    target:
-      entity_id: water_heater.tank
-    data:
-      operation_mode: heat_pump
-mode: restart
-```
-
-## Pre-cool before the evening peak
-
-Cool the house a little extra two hours before the forecast net demand peak, then coast through it.
-
-```yaml
-alias: "HVAC: pre-cool before grid peak"
-triggers:
-  - trigger: template
-    value_template: >-
-      {% set peak = states('sensor.caiso_net_demand_peak_time') | as_datetime %}
-      {{ peak is not none and now() >= peak - timedelta(hours=2) and now() < peak }}
-conditions:
-  - condition: state
-    entity_id: climate.living_room
-    state: cool
-  - condition: numeric_state
-    entity_id: weather.home
-    attribute: temperature
-    above: 85
-actions:
-  - action: climate.set_temperature
-    target:
-      entity_id: climate.living_room
-    data:
-      temperature: 72
-  - wait_for_trigger:
-      - trigger: state
-        entity_id: binary_sensor.caiso_peak_demand_period
-        to: "on"
-    timeout: "02:30:00"
-  - action: climate.set_temperature
-    target:
-      entity_id: climate.living_room
-    data:
-      temperature: 78
-mode: single
-```
-
-## Nudge to start the dishwasher or laundry
-
-```yaml
-alias: "Nudge: good time for big appliances"
-triggers:
-  - trigger: state
-    entity_id: sensor.caiso_load_shift_recommendation
-    to: use_now
-    for: "00:15:00"
-conditions:
-  - condition: time
-    after: "08:00:00"
-    before: "21:00:00"
-actions:
-  - action: notify.notify
-    data:
-      message: >-
-        Clean power on the grid right now ({{ states('sensor.caiso_co2_intensity') | int(0) }} g/kWh,
-        {{ states('sensor.caiso_renewables') | int(0) }} % renewable). Good time for the dishwasher or laundry.
-mode: single
-```
-
-## Run when the grid is at its cleanest
-
-The [CO2 intensity index](../README.md#co2-intensity-index) is 0 at the cleanest hour of the last 14 days and 100 at the dirtiest. This starts the water heater boost once the grid reaches its cleanest quarter, and stops it if things get dirty again.
+The [Carbon Intensity Index](../README.md#carbon-intensity-index) is 0 at the cleanest hour of the last 14 days and 100 at the dirtiest. This starts the boost once the grid reaches its cleanest quarter, and stops it if things get dirty again.
 
 ```yaml
 alias: "Water heater: boost when the grid is clean"
 triggers:
   - trigger: numeric_state
-    entity_id: sensor.caiso_co2_intensity_index
+    entity_id: sensor.caiso_carbon_intensity_index
     below: 25
     for: "00:10:00"
     id: clean
   - trigger: numeric_state
-    entity_id: sensor.caiso_co2_intensity_index
+    entity_id: sensor.caiso_carbon_intensity_index
     above: 50
     id: dirty
 actions:
@@ -183,15 +103,83 @@ actions:
 mode: restart
 ```
 
-## Pool pump only on surplus
+## Ease off during the evening ramp
+
+Cool the house a little extra in the mid-afternoon, let it drift while net demand is high, and go back to normal once it falls. Net demand peaks differ by season, so pick the two thresholds from your own `sensor.caiso_net_demand` history.
+
+```yaml
+alias: "HVAC: coast through the evening ramp"
+triggers:
+  - trigger: time
+    at: "15:00:00"
+    id: precool
+  - trigger: numeric_state
+    entity_id: sensor.caiso_net_demand
+    above: 25000
+    for: "00:10:00"
+    id: coast
+  - trigger: numeric_state
+    entity_id: sensor.caiso_net_demand
+    below: 22000
+    for: "00:10:00"
+    id: normal
+conditions:
+  - condition: state
+    entity_id: climate.living_room
+    state: cool
+actions:
+  - action: climate.set_temperature
+    target:
+      entity_id: climate.living_room
+    data:
+      temperature: "{{ {'precool': 72, 'coast': 78, 'normal': 75}[trigger.id] }}"
+mode: queued
+```
+
+## Nudge to start the dishwasher or laundry
+
+```yaml
+alias: "Nudge: good time for big appliances"
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.caiso_carbon_intensity_index
+    below: 25
+    for: "00:15:00"
+conditions:
+  - condition: time
+    after: "08:00:00"
+    before: "21:00:00"
+  - condition: state
+    entity_id: sensor.caiso_grid_status
+    state: normal
+actions:
+  - action: notify.notify
+    data:
+      message: >-
+        Clean power on the grid right now ({{ states('sensor.caiso_co2_intensity') | int(0) }} g/kWh,
+        {{ states('sensor.caiso_renewables') | int(0) }} % renewable). Good time for the dishwasher or laundry.
+mode: single
+```
+
+## Pool pump while grid batteries are charging
+
+When CAISO's batteries are charging hard, the grid has more solar than it needs. Enable `sensor.caiso_batteries` first; it's off by default. Negative values mean charging.
 
 ```yaml
 alias: "Pool pump: run on solar surplus"
 triggers:
-  - trigger: state
-    entity_id: binary_sensor.caiso_solar_surplus
+  - trigger: numeric_state
+    entity_id: sensor.caiso_batteries
+    below: -1000
+    for: "00:10:00"
+    id: surplus
+  - trigger: numeric_state
+    entity_id: sensor.caiso_batteries
+    above: 0
+    for: "00:10:00"
+    id: done
 actions:
-  - action: "switch.turn_{{ 'on' if trigger.to_state.state == 'on' else 'off' }}"
+  - action: "switch.turn_{{ 'on' if trigger.id == 'surplus' else 'off' }}"
     target:
       entity_id: switch.pool_pump
 mode: restart
@@ -203,9 +191,6 @@ Grid summary with built-in cards:
 ```yaml
 type: vertical-stack
 cards:
-  - type: tile
-    entity: sensor.caiso_load_shift_recommendation
-    features_position: bottom
   - type: grid
     columns: 2
     square: false
@@ -217,10 +202,10 @@ cards:
       - type: tile
         entity: sensor.caiso_net_demand
       - type: tile
-        entity: sensor.caiso_low_demand_window_start
+        entity: sensor.caiso_co2_intensity
   - type: gauge
-    entity: sensor.caiso_co2_intensity_index
-    name: Grid CO2 vs. last 14 days
+    entity: sensor.caiso_carbon_intensity_index
+    name: Grid carbon vs. last 14 days
     min: 0
     max: 100
     severity:
@@ -259,14 +244,14 @@ series:
 
 ## Template ideas
 
-Minutes until the forecast peak:
+Today's forecast net demand peak, in MW (enable the Net demand forecast sensor first):
 ```jinja
-{{ ((as_datetime(states('sensor.caiso_net_demand_peak_time')) - now()).total_seconds() / 60) | round(0) }}
+{{ state_attr('sensor.caiso_net_demand_forecast', 'forecast') | map(attribute='forecast_mw') | select('number') | max }}
 ```
 
-Is the grid charging its batteries?
+Is the grid charging its batteries? (enable the Batteries sensor first)
 ```jinja
-{{ state_attr('binary_sensor.caiso_solar_surplus', 'batteries_mw') | float(0) < 0 }}
+{{ states('sensor.caiso_batteries') | float(0) < 0 }}
 ```
 
 Fossil share of demand (enable the natural gas, coal and demand sensors first):

@@ -16,7 +16,7 @@ from custom_components.caiso_stats.api import (
     worst_status,
 )
 from custom_components.caiso_stats.const import CAISO_TZ
-from custom_components.caiso_stats.coordinator import derive, lowest_window, net_demand_due
+from custom_components.caiso_stats.coordinator import derive, net_demand_due
 from custom_components.caiso_stats.history import IndexRange, co2_index
 
 from .conftest import load_fixture
@@ -117,54 +117,23 @@ def test_parse_net_demand_rejects_other_csv() -> None:
 
 def test_derive_from_fixtures(stats_text: str, net_demand_text: str) -> None:
     stats = parse_stats(stats_text)
-    data = derive(stats, parse_net_demand(net_demand_text, SLOT), {}, SLOT)
+    data = derive(stats, parse_net_demand(net_demand_text, SLOT), {})
     assert data.grid_status == "normal"
-    assert data.reserve_ratio == pytest.approx(329.4, abs=0.1)
-    assert data.co2_index is None  # no history range passed
     assert data.co2_intensity == pytest.approx(213.5, abs=0.1)
-    assert data.peak_mw == 27770
-    assert data.peak_time == datetime(2026, 10, 19, 18, 5, tzinfo=CAISO_TZ)
-    assert data.grid_stress is False
-    assert data.clean_now is False  # 213.5 > 200 g/kWh
-    assert data.peak_period is True  # 28542 >= 90% of 27770
-    assert data.solar_surplus is False  # batteries discharging 9433 MW
-    assert data.recommendation == "avoid"
-    window = data.low_window
-    assert window is not None
-    assert window.end == datetime(2026, 10, 20, 0, 0, tzinfo=CAISO_TZ)
-    assert window.start == datetime(2026, 10, 19, 21, 0, tzinfo=CAISO_TZ)
+    assert data.co2_index is None  # no history range passed
+    assert data.low_carbon_now is None  # no index without history
 
 
-def test_derive_signals(stats_text: str) -> None:
+def test_derive_low_carbon(stats_text: str) -> None:
     raw = json.loads(stats_text)
-    raw.update(
-        gridstatus=["Normal"],
-        currentBatteries=-6000,
-        currentCo2intensity=0.08,
-        CurrentNetDemand=9000,
-        CurrentSystemDemand=20000,
-    )
-    data = derive(parse_stats(json.dumps(raw)), None, {}, SLOT)
-    assert data.peak_mw is None and data.low_window is None
-    assert data.peak_period is False  # fallback: 20000 < 90% of 31158
-    assert data.solar_surplus is True
-    assert data.clean_now is True
-    assert data.recommendation == "use_now"
-
-    raw.update(gridstatus=["Flex Alert"])
-    assert derive(parse_stats(json.dumps(raw)), None, {}, SLOT).recommendation == "avoid"
-
-    raw.update(gridstatus=["Normal"], Current_reserve=1500)  # 130% of required
-    data = derive(parse_stats(json.dumps(raw)), None, {}, SLOT)
-    assert data.grid_stress is True
-    assert derive(parse_stats(json.dumps(raw)), None, {"reserve_ratio_threshold": 120}, SLOT).grid_stress is False
-
-
-def test_lowest_window_short_remainder(net_demand_text: str) -> None:
-    day = parse_net_demand(net_demand_text, SLOT)
-    window = lowest_window(day, datetime(2026, 10, 19, 23, 0, tzinfo=CAISO_TZ), 3)
-    assert window is not None
-    assert window.end == datetime(2026, 10, 20, 0, 0, tzinfo=CAISO_TZ)
+    raw.update(gridstatus=["Flex Alert"], currentCo2intensity=0.08)
+    window = IndexRange(min_g=50, min_at=SLOT, max_g=350, max_at=SLOT, days=14)
+    data = derive(parse_stats(json.dumps(raw)), None, {}, window)
+    assert data.grid_status == "flex_alert"
+    assert data.co2_index == 10  # 80 g/kWh on a 50-350 scale
+    assert data.low_carbon_now is True  # index 10 <= 25
+    stricter = derive(parse_stats(json.dumps(raw)), None, {"low_carbon_index_threshold": 5}, window)
+    assert stricter.low_carbon_now is False
 
 
 @pytest.mark.parametrize(

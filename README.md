@@ -64,12 +64,6 @@ Everything except the Carbon Intensity Index and Low Carbon Energy Now comes str
 
 A fresh install enables 6 entities: grid status, net demand, renewables share, CO2 intensity, the Carbon Intensity Index and when the data was last updated. Everything marked *Off by default* is created disabled. To turn one on, open **Settings → Devices & services → CAISO Stats → entities**, select it and choose **Enable**. Disabled entities record no history, which keeps the database small.
 
-> **Upgrading from 0.2.1 or earlier:** 0.2.2 drops the load-shifting signals, so the integration sticks to CAISO's own data plus one index.
-> - **Removed** (deleted automatically): *Load shift recommendation*, *Grid stress*, *Peak demand period*, *Solar surplus*, *Reserve ratio*, *Solar and wind share*, *Net demand peak time*, *Net demand peak forecast* and *Low demand window start*, along with the options that tuned them.
-> - **Renamed:** *CO2 Intensity Index* is now *Carbon Intensity Index*. *Clean energy now* is now *Low Carbon Energy Now* and uses the index instead of a fixed g/kWh threshold. Existing installs keep their entity IDs (`sensor.caiso_co2_intensity_index`, `binary_sensor.caiso_clean_energy_now`).
->
-> Update any automations that used the removed entities; the [examples](docs/automations.md) show replacements.
-
 ### Grid
 | Entity | Unit | Notes |
 |---|---|---|
